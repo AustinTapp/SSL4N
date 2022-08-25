@@ -10,3 +10,7 @@ The stages of the project are as follows:
 4) Segmentation prediction on an unlabled dataset of 300 neonates. Deployed using Rhino Health's (https://www.rhinohealth.com/) federated learning platform. 
 
 Built primarily with MONAI (https://github.com/Project-MONAI/MONAI) modules and pytorch lightning (https://www.pytorchlightning.ai) backend.
+
+To install requirements using the .toml file, open a prompt (Anaconda) and navigat [cd] to the directory containing this repo. Run: conda install -c conda-forge poetry
+Once poetry is installed, run: 'python -m poetry install .'
+
