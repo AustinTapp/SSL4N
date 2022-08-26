@@ -6,12 +6,12 @@ from monai.networks.nets import SwinUNETR
 
 
 class ViTA(nn.Module):
-    def __init__(self, in_channels: int = None, img_size=(None, None, None), patch_size=(None,None,None), out_channels: int = None):
+    def __init__(self, in_channels: int = None, img_size=(None, None, None), patch_size=(None,None,None)):
         super().__init__()
         ViTrans = ViTAutoEnc(in_channels=in_channels,
                              img_size=img_size,
                              patch_size=patch_size,
-                             out_channels=out_channels,
+                             out_channels=1,
                              deconv_chns=16,
                              hidden_size=768,
                              mlp_dim=3072,
@@ -21,7 +21,9 @@ class ViTA(nn.Module):
                              dropout_rate=0.0,
                              spatial_dims=3
                              )
-        del(ViTrans)
+
+
+#need to add forward stuff
 
 
 class sUNETR(nn.Module):
@@ -42,6 +44,6 @@ class sUNETR(nn.Module):
                          spatial_dims=3,
                          downsample='merging'
                          )
-        del(Unet)
 
 
+#need to add forward stuff
