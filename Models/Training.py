@@ -5,7 +5,7 @@ from monai.losses import ContrastiveLoss
 
 from monai.visualize.img2tensorboard import plot_2d_or_3d_image
 from pytorch_lightning import LightningModule
-
+import wandb
 import torch
 
 class ViTATrain(LightningModule):
@@ -62,34 +62,14 @@ class ViTATrain(LightningModule):
             'step':  self.train_steps,
             'epoch': self.current_epoch})
 
-#need to finish logging
         if self.train_steps % 100 == 0:
             self.log({
                 'learning rate': self.model.optimizers[0].param_groups[0]['lr'],
                 'L1': r_loss,
+                'Contrastive': cl_loss,
                 'epoch': self.current_epoch,
-                'step': self.train_steps,
-                'Image': wandb.Image(model.get_current_visuals()['real_A'].squeeze().data.cpu().numpy()[:, :, 32]),
-                'Labels': {
-                    'true': wandb.Image(
-                        model.get_current_visuals()['rec_A'].squeeze().data.cpu().numpy()[:, :, 32]),  # recreated
-                    'pred': wandb.Image(
-                        model.get_current_visuals()['fake_B'].squeeze().data.cpu().numpy()[:, :, 32]),  # t2 for now
-                },
-                'Masks': {'true': wandb.Image(
-                    model.get_current_visuals()['skull_mask_true'].squeeze().data.cpu().numpy()[:, :, 32]),
-                    'pred': wandb.Image(
-                        model.get_current_visuals()['skull_mask_pred'].squeeze().data.cpu().numpy()[:, :, 32])}
-            })  # end
-
-        if total_steps % opt.print_freq == 0:
-            losses = model.get_current_losses()
-            t = (time.time() - iter_start_time) / opt.batch_size
-            visualizer.print_current_losses(epoch, epoch_iter, losses, t, t_data)
-            mae = MeanAbsoluteError()
-            val_score = mae(model.get_current_visuals()['rec_A'].cpu(), model.get_current_visuals()['real_A'].cpu())
-            # edit this
-
+                'step': self.train_steps})
+            self.log_imag(key="Images", images=[gt_input, outputs_v1, outputs_v2], caption=["GT", "Recon1", "Recon2"])
 
         return total_loss
 

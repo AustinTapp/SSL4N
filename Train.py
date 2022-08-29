@@ -1,5 +1,5 @@
 from Data.Dataloader import ADNIdata
-
+from Models.Training import ViTATrain
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
@@ -15,17 +15,16 @@ if __name__ == "__main__":
         gpus=[0],
         max_epochs=500,
         callbacks=[lr_monitor, checkpoint_callback],
-        # overfit_batches=1,
         log_every_n_steps=1,
     )
-    # effective batch size is double due to reversing
     size = 128
-    pixdim = 1.0
+    dims = 1
     trainer.fit(
-        model=FeatureLearner(lr=1e-3, mask_weight=3.0, img_size=size, pixdim=pixdim, lam=1.0),
-        datamodule=FeatureDataModule(
+        model=ViTATrain(),
+        datamodule=ADNIdata(
             batch_size=3,
             img_size=size,
-            pixdim=pixdim),
-        # ckpt_path = '/home/abhi/Code/NST3DBrain/saved_models/loss/epoch=3-step=4.ckpt'
+            dimensions=dims)
     )
+
+

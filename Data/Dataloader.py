@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader, random_split,  ConcatDataset
 from pytorch_lightning import LightningDataModule
 
 class ADNIdata(LightningDataModule):
-    def __init__(self, batch_size: int = None):
+    def __init__(self, batch_size: int = None, img_size: int = None, dimensions:int = None):
         super().__init__()
         scans = NiftiData()
 
@@ -16,4 +16,3 @@ class ADNIdata(LightningDataModule):
     def val_dataloader(self):
         return DataLoader(self.val, batch_size=self.batch_size, num_workers=24)
 
-#should be ready.. will test

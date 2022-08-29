@@ -47,8 +47,6 @@ class NiftiData(Dataset):
                 ]
                 ),
                 RandCoarseShuffled(keys=["image"], prob=0.8, holes=10, spatial_size=8),
-                # Please note that that if image, image_2 are called via the same transform call because of the determinism
-                # they will get augmented the exact same way which is not the required case here, hence two calls are made
                 OneOf(transforms=[
                     RandCoarseDropoutd(keys=["image_2"], prob=1.0, holes=6, spatial_size=5, dropout_holes=True,
                                        max_spatial_size=32),
