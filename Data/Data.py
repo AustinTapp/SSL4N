@@ -17,8 +17,6 @@ from monai.transforms import (
     RandCoarseShuffled
 )
 
-#need to check dataset
-
 class NiftiData(Dataset):
     def __init__(self):
         self.path = os.path.join(os.getcwd()+'\\Images')
