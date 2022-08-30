@@ -21,8 +21,8 @@ from monai.transforms import (
 
 class NiftiData(Dataset):
     def __init__(self):
-        self.path = os.path.join(os.getcwd()+'Images')
-        self.images = glob.glob(self.path)
+        self.path = os.path.join(os.getcwd()+'\\Images')
+        self.images = glob.glob(self.path + '\\*')
 
         self.transform = Compose(
 
@@ -65,4 +65,7 @@ class NiftiData(Dataset):
         path = self.images[item]
         image = {"image": path}
         return self.transform(image)
+
+    def get_sample(self):
+        return self.images
 

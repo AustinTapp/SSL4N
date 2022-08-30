@@ -5,7 +5,6 @@ from monai.losses import ContrastiveLoss
 
 from monai.visualize.img2tensorboard import plot_2d_or_3d_image
 from pytorch_lightning import LightningModule
-import wandb
 import torch
 
 class ViTATrain(LightningModule):
