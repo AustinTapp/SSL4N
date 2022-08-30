@@ -2,7 +2,7 @@ from Data.Data import NiftiData
 from torch.utils.data import DataLoader, random_split,  ConcatDataset
 from pytorch_lightning import LightningDataModule
 
-class ADNIdata(LightningDataModule):
+class MRIdata(LightningDataModule):
     def __init__(self, batch_size: int = None, img_size: int = None, dimensions:int = None):
         super().__init__()
         scans = NiftiData()

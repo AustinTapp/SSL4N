@@ -1,4 +1,4 @@
-from Data.Dataloader import ADNIdata
+from Data.Dataloader import MRIdata
 from Models.Training import ViTATrain
 
 from pytorch_lightning import Trainer
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     dims = 1
     trainer.fit(
         model=ViTATrain(),
-        datamodule=ADNIdata(
+        datamodule=MRIdata(
             batch_size=3,
             img_size=size,
             dimensions=dims)

@@ -16,7 +16,7 @@ class ViTATrain(LightningModule):
             torch.zeros(self.hparams.img_size)]
 
         self.model = ViTAutoEnc(
-            in_channels=1,
+            in_channels=4,
             img_size=(96, 96, 96),
             patch_size=(16, 16, 16),
             pos_embed='conv',
