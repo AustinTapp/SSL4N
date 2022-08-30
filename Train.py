@@ -12,7 +12,8 @@ if __name__ == "__main__":
     checkpoint_callback = ModelCheckpoint(dirpath="./saved_models/loss/", save_top_k=1, monitor="val_loss")
     trainer = Trainer(
         logger=wandb_logger,
-        gpus=[0],
+        accelerator="cpu",
+        #devices=[0],
         max_epochs=500,
         callbacks=[lr_monitor, checkpoint_callback],
         log_every_n_steps=1,

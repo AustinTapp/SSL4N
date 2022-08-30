@@ -19,7 +19,7 @@ from monai.transforms import (
 
 class NiftiData(Dataset):
     def __init__(self):
-        self.path = os.path.join(os.getcwd()+'\\Images')
+        self.path = os.path.join(os.getcwd()+'\\Data\\Images')
         self.images = glob.glob(self.path + '\\*')
 
         self.transform = Compose(
