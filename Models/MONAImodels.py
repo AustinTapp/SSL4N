@@ -21,9 +21,6 @@ class ViTA(nn.Module):
         return self.ViTrans(images)
 
 
-#need to add forward stuff
-
-
 class sUNETR(nn.Module):
     def __init__(self, img_size=(None, None, None), in_channels: int = None, out_channels: int = None):
 
