@@ -12,7 +12,6 @@ monai = "0.9.1"
 jsonargparse = "4.13.0"
 nibabel = "4.0.1"
 scikit-image = "0.19.3"
-wandb = "0.13.0"
 
 [tool.poetry.dev-dependencies]
 
