@@ -45,7 +45,7 @@ class ViTATrain(LightningModule):
 
     def _prepare_batch(self, batch):
         print(batch)
-        return batch['image'], batch['image_2'], batch['gt_image']
+        return batch[0]['image'], batch[0]['image_2'], batch[0]['gt_image']
 
     def _common_step(self, batch, batch_idx, stage: str):
         inputs, inputs_2, gt_input = self._prepare_batch(batch)
