@@ -55,10 +55,6 @@ class ViTATrain(LightningModule):
         flat_out_v2 = outputs_v2.flatten(start_dim=1, end_dim=4)
 
         r_loss = self.L1(outputs_v1, gt_input)
-
-        if stage == 'train':
-            import pdb; pdb.set_trace()
-
         cl_loss = self.contrast(flat_out_v1, flat_out_v2)
 
         # Adjust the CL loss by Recon Loss
