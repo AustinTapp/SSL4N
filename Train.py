@@ -27,7 +27,7 @@ if __name__ == "__main__":
     trainer.fit(
         model=ViTATrain(),
         datamodule=MRIdata(
-            batch_size=1,
+            batch_size=4,
             img_size=size,
             dimensions=dims)
     )

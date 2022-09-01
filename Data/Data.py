@@ -20,11 +20,11 @@ from monai.transforms import (
 class NiftiData(Dataset):
     def __init__(self):
         # for image check
-        self.path = os.path.join(os.getcwd()+'\\Images')
+        # self.path = os.path.join(os.getcwd()+'\\Images')
 
         # for standard training
-        #self.path = os.path.join(os.getcwd()+'\\Data\\Images')
-        self.images = glob.glob(self.path + '\\*')
+        self.path = os.path.join(os.getcwd()+'\\Data\\Images')
+        self.image_path = glob.glob(self.path + '\\*')
 
         self.transform = Compose(
 
@@ -32,9 +32,10 @@ class NiftiData(Dataset):
                 LoadImaged(keys=["image"]),
                 EnsureChannelFirstd(keys=["image"]),
                 Spacingd(keys=["image"], pixdim=(
-                    2.0, 2.0, 2.0), mode=("bilinear")),
+                    1.0, 1.0, 1.0), mode=("bilinear")),
+                #segmentation change to nearest
                 ScaleIntensityRanged(
-                    keys=["image"], a_min=-57, a_max=164,
+                    keys=["image"], a_min=0, a_max=4096,
                     b_min=0.0, b_max=1.0, clip=True,
                 ),
                 CropForegroundd(keys=["image"], source_key="image"),
@@ -61,13 +62,13 @@ class NiftiData(Dataset):
         )
 
     def __len__(self):
-        return len(self.images)
+        return len(self.image_path)
 
-    def __getitem__(self, item):
-        path = self.images[item]
-        image = {"image": path}
+    def __getitem__(self, index):
+        single_path = self.image_path[index]
+        image = {"image": single_path}
         return self.transform(image)
 
     def get_sample(self):
-        return self.images
+        return self.image_path
 
