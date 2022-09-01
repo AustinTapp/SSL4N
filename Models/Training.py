@@ -26,7 +26,7 @@ class ViTATrain(LightningModule):
 
         #self.model = ViTA(self.hparams.in_channels, self.hparams.img_size, self.hparams.patch_size)
         self.L1 = L1Loss()
-        self.contrast = ContrastiveLoss(batch_size=self.hparams.batch_size*2, temperature=0.05)
+        self.contrast = ContrastiveLoss(batch_size=self.hparams.batch_size, temperature=0.05)
 
     def forward(self, inputs, inputs_2):
         outputs_v1, hidden_v1 = self.model(inputs)
@@ -44,7 +44,6 @@ class ViTATrain(LightningModule):
         return optimizer
 
     def _prepare_batch(self, batch):
-        print(batch)
         return batch[0]['image'], batch[0]['image_2'], batch[0]['gt_image']
 
     def _common_step(self, batch, batch_idx, stage: str):
