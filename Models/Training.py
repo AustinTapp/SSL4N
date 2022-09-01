@@ -8,7 +8,7 @@ from pytorch_lightning import LightningModule
 import torch
 
 class ViTATrain(LightningModule):
-    def __init__(self, in_channels=4, img_size=(1, 1, 96, 96, 96), patch_size=(16, 16, 16), batch_size=4, lr = 1e-4):
+    def __init__(self, in_channels=4, img_size=(4, 1, 96, 96, 96), patch_size=(16, 16, 16), batch_size=4, lr = 1e-4):
         super().__init__()
 
         self.save_hyperparameters()
@@ -28,10 +28,10 @@ class ViTATrain(LightningModule):
         self.L1 = L1Loss()
         self.contrast = ContrastiveLoss(batch_size=self.hparams.batch_size, temperature=0.05)
 
-    def forward(self, inputs, inputs_2):
+    def forward(self, inputs, inputs2):
         outputs_v1, hidden_v1 = self.model(inputs)
-        outputs_v2, hidden_v2 = self.model(inputs_2)
-        return outputs_v1, outputs_v2, hidden_v1, hidden_v2
+        outputs_v2, hidden_v2 = self.model(inputs2)
+        return outputs_v1, outputs_v2
 
     def training_step(self, batch, batch_idx):
         return self._common_step(batch, batch_idx, "train")
@@ -49,30 +49,37 @@ class ViTATrain(LightningModule):
     def _common_step(self, batch, batch_idx, stage: str):
         inputs, inputs_2, gt_input = self._prepare_batch(batch)
 
-        outputs_v1, outputs_v2, _, _ = self.forward(inputs, inputs_2)
+        outputs_v1, outputs_v2, = self.forward(inputs, inputs_2)
 
         flat_out_v1 = outputs_v1.flatten(start_dim=1, end_dim=4)
         flat_out_v2 = outputs_v2.flatten(start_dim=1, end_dim=4)
 
         r_loss = self.L1(outputs_v1, gt_input)
+
+        if stage == 'train':
+            import pdb; pdb.set_trace()
+
         cl_loss = self.contrast(flat_out_v1, flat_out_v2)
 
         # Adjust the CL loss by Recon Loss
         total_loss = r_loss + cl_loss * r_loss
+        train_steps = self.current_epoch + batch_idx
 
-        self.log({
+        self.log_dict({
             f'{stage}_loss': total_loss,
-            'step':  self.train_steps,
+            'step':  train_steps,
             'epoch': self.current_epoch})
 
-        if self.train_steps % 100 == 0:
-            self.log({
-                'learning rate': self.model.optimizers[0].param_groups[0]['lr'],
+        if train_steps % 100 == 0:
+            self.log_dict({
                 'L1': r_loss,
                 'Contrastive': cl_loss,
                 'epoch': self.current_epoch,
-                'step': self.train_steps})
-            self.log_imag(key="Images", images=[gt_input, outputs_v1, outputs_v2], caption=["GT", "Recon1", "Recon2"])
+                'step': train_steps})
+            self.logger.log_image(key="Images", images=[gt_input.cpu().numpy()[0, 0, :, :, 38],
+                                                        outputs_v1.cpu().numpy()[0, 0, :, :, 38],
+                                                        outputs_v2.cpu().numpy()[0, 0, :, :, 38]],
+                                  caption=["GT", "Recon1", "Recon2"])
 
         return total_loss
 
