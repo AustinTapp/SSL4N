@@ -66,16 +66,16 @@ class ViTATrain(LightningModule):
         train_steps = self.current_epoch + batch_idx
 
         self.log_dict({
-            f'{stage}_loss': total_loss,
-            'step':  torch.FloatTensor(train_steps),
-            'epoch': torch.FloatTensor(self.current_epoch)}, batch_size=self.hparams.batch_size)
+            f'{stage}_loss': total_loss.item(),
+            'step': float(train_steps),
+            'epoch': float(self.current_epoch)}, batch_size=self.hparams.batch_size)
 
         if train_steps % 100 == 0:
             self.log_dict({
-                'L1': r_loss,
-                'Contrastive': cl_loss,
-                'epoch': torch.FloatTensor(self.current_epoch),
-                'step': torch.FloatTensor(train_steps)}, batch_size=self.hparams.batch_size)
+                'L1': r_loss.item(),
+                'Contrastive': cl_loss.item(),
+                'epoch': float(self.current_epoch),
+                'step': float(train_steps)}, batch_size=self.hparams.batch_size)
             self.logger.log_image(key="Images", images=[gt_input.detach().cpu().numpy()[0, 0, :, :, 38],
                                                         outputs_v1.detach().cpu().numpy()[0, 0, :, :, 38],
                                                         outputs_v2.detach().cpu().numpy()[0, 0, :, :, 38]],
