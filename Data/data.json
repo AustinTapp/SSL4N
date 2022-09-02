@@ -1,0 +1,9 @@
+{
+  "training": [
+    { "image": "30.nii.gz" },
+    { "image": "32.nii.gz" }
+  ],
+  "validation": [
+    { "image": "33.nii.gz" }
+  ]
+}

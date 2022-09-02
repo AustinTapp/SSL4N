@@ -1,9 +1,9 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
 import json
 import time
 import torch
+import matplotlib.pyplot as plt
 
 from torch.nn import L1Loss
 from monai.utils import set_determinism, first
@@ -27,28 +27,33 @@ from monai.transforms import (
 
 def main():
 
+    #TODO Defining file paths & output directory path
     json_Path = os.path.normpath('Data/Images/data.json')
-    data_Root = os.path.normpath('Data/Images')
+    data_Root = os.path.normpath('Data/Images/')
+    logdir_path = os.path.normpath('LogDirPath/')
+
+    if os.path.exists(logdir_path)==False:
+        os.mkdir(logdir_path)
 
     # Load Json & Append Root Path
     with open(json_Path, 'r') as json_f:
         json_Data = json.load(json_f)
 
     train_Data = json_Data['training']
-    #val_Data = json_Data['validation']
+    val_Data = json_Data['validation']
 
     for idx, each_d in enumerate(train_Data):
         train_Data[idx]['image'] = os.path.join(data_Root, train_Data[idx]['image'])
 
-    '''for idx, each_d in enumerate(val_Data):
-        val_Data[idx]['image'] = os.path.join(data_Root, val_Data[idx]['image'])'''
+    for idx, each_d in enumerate(val_Data):
+        val_Data[idx]['image'] = os.path.join(data_Root, val_Data[idx]['image'])
 
     print('Total Number of Training Data Samples: {}'.format(len(train_Data)))
     print(train_Data)
     print('#' * 10)
-    #print('Total Number of Validation Data Samples: {}'.format(len(val_Data)))
-    #print(val_Data)
-    #print('#' * 10)
+    print('Total Number of Validation Data Samples: {}'.format(len(val_Data)))
+    print(val_Data)
+    print('#' * 10)
 
     # Set Determinism
     set_determinism(seed=123)
@@ -92,7 +97,6 @@ def main():
     check_ds = Dataset(data=train_Data, transform=train_Transforms)
     check_loader = DataLoader(check_ds, batch_size=1)
     check_data = first(check_loader)
-    print(check_data)
     image = (check_data["image"][0][0])
     print(f"image shape: {image.shape}")
 
@@ -129,8 +133,8 @@ def main():
     train_ds = Dataset(data=train_Data, transform=train_Transforms)
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
 
-    #val_ds = Dataset(data=val_Data, transform=train_Transforms)
-    #val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=True, num_workers=4)
+    val_ds = Dataset(data=val_Data, transform=train_Transforms)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=True, num_workers=4)
 
     for epoch in range(max_epochs):
         print("-" * 10)
@@ -187,7 +191,7 @@ def main():
         epoch_recon_loss_values.append(epoch_recon_loss)
         print(f"epoch {epoch + 1} average loss: {epoch_loss:.4f}")
 
-        '''if epoch % val_interval == 0:
+        if epoch % val_interval == 0:
             print('Entering Validation for epoch: {}'.format(epoch+1))
             total_val_loss = 0
             val_step = 0
@@ -240,7 +244,7 @@ def main():
             plt.title('Training Recon Loss')
 
             plt.savefig(os.path.join(logdir_path, 'loss_plots.png'))
-            plt.close(1)'''
+            plt.close(1)
 
     print('Done')
     return None
