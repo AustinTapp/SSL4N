@@ -8,7 +8,7 @@ from pytorch_lightning import LightningModule
 import torch
 
 class ViTATrain(LightningModule):
-    def __init__(self, in_channels=4, img_size=(4, 1, 96, 96, 96), patch_size=(16, 16, 16), batch_size=4, lr = 1e-4):
+    def __init__(self, in_channels=4, img_size=(1, 1, 96, 96, 96), patch_size=(16, 16, 16), batch_size=1, lr=1e-4):
         super().__init__()
 
         self.save_hyperparameters()
@@ -26,7 +26,7 @@ class ViTATrain(LightningModule):
 
         #self.model = ViTA(self.hparams.in_channels, self.hparams.img_size, self.hparams.patch_size)
         self.L1 = L1Loss()
-        self.contrast = ContrastiveLoss(batch_size=self.hparams.batch_size, temperature=0.05)
+        self.contrast = ContrastiveLoss(temperature=0.05, batch_size=self.hparams.batch_size)
 
     def forward(self, inputs, inputs2):
         outputs_v1, hidden_v1 = self.model(inputs)
@@ -49,7 +49,7 @@ class ViTATrain(LightningModule):
     def _common_step(self, batch, batch_idx, stage: str):
         inputs, inputs_2, gt_input = self._prepare_batch(batch)
 
-        outputs_v1, outputs_v2, = self.forward(inputs, inputs_2)
+        outputs_v1, outputs_v2 = self.forward(inputs, inputs_2)
 
         flat_out_v1 = outputs_v1.flatten(start_dim=1, end_dim=4)
         flat_out_v2 = outputs_v2.flatten(start_dim=1, end_dim=4)
