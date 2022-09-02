@@ -73,9 +73,11 @@ class ViTATrain(LightningModule):
                 'epoch': float(self.current_epoch),
                 'step': float(train_steps)}, batch_size=self.hparams.batch_size)
             self.logger.log_image(key="Images", images=[gt_input.detach().cpu().numpy()[0, 0, :, :, 38],
+                                                        inputs.detach().cpu().numpy()[0, 0, :, :, 38],
+                                                        inputs_2.detach().cpu().numpy()[0, 0, :, :, 38],
                                                         outputs_v1.detach().cpu().numpy()[0, 0, :, :, 38],
                                                         outputs_v2.detach().cpu().numpy()[0, 0, :, :, 38]],
-                                  caption=["GT", "Recon1", "Recon2"])
+                                  caption=["GT", "Trans1", "Trans2", "Recon1", "Recon2"])
 
         return total_loss
 
