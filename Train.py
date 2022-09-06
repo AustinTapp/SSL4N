@@ -24,13 +24,10 @@ if __name__ == "__main__":
         callbacks=[lr_monitor, checkpoint_callback],
         log_every_n_steps=1,
     )
-    size = 128
-    dims = 1
+
     trainer.fit(
         model=ViTATrain(),
         ckpt_path=last_chpt,
         datamodule=MRIdata(
-            batch_size=1,
-            img_size=size,
-            dimensions=dims)
+            batch_size=1)
     )
