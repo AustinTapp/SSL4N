@@ -44,8 +44,9 @@ class ViTATrain(LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
         return optimizer
 
+    # index needed here, batch is a list of dicts with size 1,
     def _prepare_batch(self, batch):
-        return batch['image'], batch['image_2'], batch['gt_image']
+        return batch[0]['image'], batch[0]['image_2'], batch[0]['gt_image']
 
     def _common_step(self, batch, batch_idx, stage: str):
         inputs, inputs_2, gt_input = self._prepare_batch(batch)
