@@ -1,256 +1,332 @@
 import os
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-import json
-import time
 import torch
+import numpy as np
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-from torch.nn import L1Loss
-from monai.utils import set_determinism, first
-from monai.networks.nets import ViTAutoEnc
-from monai.losses import ContrastiveLoss
-from monai.data import DataLoader, Dataset
+from monai.losses import DiceCELoss
+from monai.inferers import sliding_window_inference
 from monai.transforms import (
-    LoadImaged,
+    AsDiscrete,
+    AddChanneld,
     Compose,
     CropForegroundd,
-    CopyItemsd,
-    SpatialPadd,
-    EnsureChannelFirstd,
-    Spacingd,
-    OneOf,
+    LoadImaged,
+    Orientationd,
+    RandFlipd,
+    RandCropByPosNegLabeld,
+    RandShiftIntensityd,
     ScaleIntensityRanged,
-    RandSpatialCropSamplesd,
-    RandCoarseDropoutd,
-    RandCoarseShuffled
+    Spacingd,
+    RandRotate90d,
+    ToTensord,
 )
 
+from monai.config import print_config
+from monai.metrics import DiceMetric
+from monai.networks.nets import UNETR
+
+from monai.data import (
+    DataLoader,
+    CacheDataset,
+    load_decathlon_datalist,
+    decollate_batch,
+)
+
+
 def main():
+    print_config()
 
-    #TODO Defining file paths & output directory path
-    json_Path = os.path.normpath('Data/data.json')
-    data_Root = os.path.normpath('Data/Images/')
-    logdir_path = os.path.normpath('LogDirPath/')
+    # Define paths for running the script
+    data_dir = os.path.normpath('/to/be/defined')
+    json_path = os.path.normpath('/to/be/defined')
+    logdir = os.path.normpath('/to/be/defined')
 
-    if os.path.exists(logdir_path) == False:
-        os.mkdir(logdir_path)
+    # If use_pretrained is set to 0, ViT weights will not be loaded and random initialization is used
+    use_pretrained = 1
+    pretrained_path = os.path.normpath('/to/be/defined')
 
-    # Load Json & Append Root Path
-    with open(json_Path, 'r') as json_f:
-        json_Data = json.load(json_f)
+    # Training Hyper-parameters
+    lr = 1e-4
+    max_iterations = 30000
+    eval_num = 100
 
-    train_Data = json_Data['training']
-    val_Data = json_Data['validation']
+    if os.path.exists(logdir)==False:
+        os.mkdir(logdir)
 
-    for idx, each_d in enumerate(train_Data):
-        train_Data[idx]['image'] = os.path.join(data_Root, train_Data[idx]['image'])
-
-    for idx, each_d in enumerate(val_Data):
-        val_Data[idx]['image'] = os.path.join(data_Root, val_Data[idx]['image'])
-
-    print('Total Number of Training Data Samples: {}'.format(len(train_Data)))
-    print(train_Data)
-    print('#' * 10)
-    print('Total Number of Validation Data Samples: {}'.format(len(val_Data)))
-    print(val_Data)
-    print('#' * 10)
-
-    # Set Determinism
-    set_determinism(seed=123)
-
-    # Define Training Transforms
-    train_Transforms = Compose(
+    # Training & Validation Transform chain
+    train_transforms = Compose(
         [
-            LoadImaged(keys=["image"]),
-            EnsureChannelFirstd(keys=["image"]),
-            Spacingd(keys=["image"], pixdim=(
-                2.0, 2.0, 2.0), mode=("bilinear")),
+            LoadImaged(keys=["image", "label"]),
+            AddChanneld(keys=["image", "label"]),
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            Spacingd(
+                keys=["image", "label"],
+                pixdim=(1.5, 1.5, 2.0),
+                mode=("bilinear", "nearest"),
+            ),
             ScaleIntensityRanged(
-                keys=["image"], a_min=-57, a_max=164,
-                b_min=0.0, b_max=1.0, clip=True,
+                keys=["image"],
+                a_min=-175,
+                a_max=250,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
             ),
-            CropForegroundd(keys=["image"], source_key="image"),
-            SpatialPadd(keys=["image"], spatial_size=(96, 96, 96)),
-            RandSpatialCropSamplesd(keys=["image"], roi_size=(96, 96, 96), random_size=False, num_samples=2),
-            CopyItemsd(keys=["image"], times=2, names=["gt_image", "image_2"], allow_missing_keys=False),
-            OneOf(transforms=[
-                RandCoarseDropoutd(keys=["image"], prob=1.0, holes=6, spatial_size=5, dropout_holes=True,
-                                   max_spatial_size=32),
-                RandCoarseDropoutd(keys=["image"], prob=1.0, holes=6, spatial_size=20, dropout_holes=False,
-                                   max_spatial_size=64),
-            ]
+            CropForegroundd(keys=["image", "label"], source_key="image"),
+            RandCropByPosNegLabeld(
+                keys=["image", "label"],
+                label_key="label",
+                spatial_size=(96, 96, 96),
+                pos=1,
+                neg=1,
+                num_samples=4,
+                image_key="image",
+                image_threshold=0,
             ),
-            RandCoarseShuffled(keys=["image"], prob=0.8, holes=10, spatial_size=8),
-            # Please note that that if image, image_2 are called via the same transform call because of the determinism
-            # they will get augmented the exact same way which is not the required case here, hence two calls are made
-            OneOf(transforms=[
-                RandCoarseDropoutd(keys=["image_2"], prob=1.0, holes=6, spatial_size=5, dropout_holes=True,
-                                   max_spatial_size=32),
-                RandCoarseDropoutd(keys=["image_2"], prob=1.0, holes=6, spatial_size=20, dropout_holes=False,
-                                   max_spatial_size=64),
-            ]
+            RandFlipd(
+                keys=["image", "label"],
+                spatial_axis=[0],
+                prob=0.10,
             ),
-            RandCoarseShuffled(keys=["image_2"], prob=0.8, holes=10, spatial_size=8)
+            RandFlipd(
+                keys=["image", "label"],
+                spatial_axis=[1],
+                prob=0.10,
+            ),
+            RandFlipd(
+                keys=["image", "label"],
+                spatial_axis=[2],
+                prob=0.10,
+            ),
+            RandRotate90d(
+                keys=["image", "label"],
+                prob=0.10,
+                max_k=3,
+            ),
+            RandShiftIntensityd(
+                keys=["image"],
+                offsets=0.10,
+                prob=0.50,
+            ),
+            ToTensord(keys=["image", "label"]),
+        ]
+    )
+    val_transforms = Compose(
+        [
+            LoadImaged(keys=["image", "label"]),
+            AddChanneld(keys=["image", "label"]),
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            Spacingd(
+                keys=["image", "label"],
+                pixdim=(1.5, 1.5, 2.0),
+                mode=("bilinear", "nearest"),
+            ),
+            ScaleIntensityRanged(
+                keys=["image"], a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True
+            ),
+            CropForegroundd(keys=["image", "label"], source_key="image"),
+            ToTensord(keys=["image", "label"]),
         ]
     )
 
-    check_ds = Dataset(data=train_Data, transform=train_Transforms)
-    check_loader = DataLoader(check_ds, batch_size=1)
-    check_data = first(check_loader)
-    image = (check_data["image"][0][0])
-    print(f"image shape: {image.shape}")
+    datalist = load_decathlon_datalist(base_dir=data_dir,
+                                       data_list_file_path=json_path,
+                                       is_segmentation=True,
+                                       data_list_key="training")
 
-    # Define Network ViT backbone & Loss & Optimizer
-    device = torch.device("cuda:0")
-    model = ViTAutoEnc(
-        in_channels=1,
-        img_size=(96, 96, 96),
-        patch_size=(16, 16, 16),
-        pos_embed='conv',
-        hidden_size=768,
-        mlp_dim=3072,
+    val_files = load_decathlon_datalist(base_dir=data_dir,
+                                        data_list_file_path=json_path,
+                                        is_segmentation=True,
+                                        data_list_key="validation")
+    train_ds = CacheDataset(
+        data=datalist,
+        transform=train_transforms,
+        cache_num=24,
+        cache_rate=1.0,
+        num_workers=4,
+    )
+    train_loader = DataLoader(
+        train_ds, batch_size=1, shuffle=True, num_workers=4, pin_memory=True
+    )
+    val_ds = CacheDataset(
+        data=val_files,
+        transform=val_transforms,
+        cache_num=6,
+        cache_rate=1.0,
+        num_workers=4
+    )
+    val_loader = DataLoader(
+        val_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True
     )
 
-    model = model.to(device)
+    case_num = 0
+    img = val_ds[case_num]["image"]
+    label = val_ds[case_num]["label"]
+    img_shape = img.shape
+    label_shape = label.shape
+    print(f"image shape: {img_shape}, label shape: {label_shape}")
 
-    # Define Hyper-paramters for training loop
-    max_epochs = 500
-    val_interval = 2
-    batch_size = 1
-    lr = 1e-4
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    model = UNETR(
+        in_channels=1,
+        out_channels=14,
+        img_size=(96, 96, 96),
+        feature_size=16,
+        hidden_size=768,
+        mlp_dim=3072,
+        num_heads=12,
+        pos_embed="conv",
+        norm_name="instance",
+        res_block=True,
+        dropout_rate=0.0,
+    )
+
+    # Load ViT backbone weights into UNETR
+    if use_pretrained==1:
+        print('Loading Weights from the Path {}'.format(pretrained_path))
+        vit_dict = torch.load(pretrained_path)
+        vit_weights = vit_dict['state_dict']
+
+        # Remove items of vit_weights if they are not in the ViT backbone (this is used in UNETR).
+        # For example, some variables names like conv3d_transpose.weight, conv3d_transpose.bias,
+        # conv3d_transpose_1.weight and conv3d_transpose_1.bias are used to match dimensions
+        # while pretraining with ViTAutoEnc and are not a part of ViT backbone.
+        model_dict = model.vit.state_dict()
+        vit_weights = {k: v for k, v in vit_weights.items() if k in model_dict}
+        model_dict.update(vit_weights)
+        model.vit.load_state_dict(model_dict)
+        del model_dict, vit_weights, vit_dict
+        print('Pretrained Weights Succesfully Loaded !')
+
+    elif use_pretrained==0:
+        print('No weights were loaded, all weights being used are randomly initialized!')
+
+    model.to(device)
+
+    loss_function = DiceCELoss(to_onehot_y=True, softmax=True)
+    torch.backends.cudnn.benchmark = True
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
+
+    post_label = AsDiscrete(to_onehot=14)
+    post_pred = AsDiscrete(argmax=True, to_onehot=14)
+    dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=False)
+    global_step = 0
+    dice_val_best = 0.0
+    global_step_best = 0
     epoch_loss_values = []
-    step_loss_values = []
-    epoch_cl_loss_values = []
-    epoch_recon_loss_values = []
-    val_loss_values = []
-    best_val_loss = 1000.0
+    metric_values = []
 
-    recon_loss = L1Loss()
-    contrastive_loss = ContrastiveLoss(batch_size=batch_size * 2, temperature=0.05)
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    def validation(epoch_iterator_val):
+        model.eval()
+        dice_vals = list()
 
-    # Define DataLoader using MONAI, CacheDataset needs to be used
-    train_ds = Dataset(data=train_Data, transform=train_Transforms)
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
+        with torch.no_grad():
+            for step, batch in enumerate(epoch_iterator_val):
+                val_inputs, val_labels = (batch["image"].cuda(), batch["label"].cuda())
+                val_outputs = sliding_window_inference(val_inputs, (96, 96, 96), 4, model)
+                val_labels_list = decollate_batch(val_labels)
+                val_labels_convert = [
+                    post_label(val_label_tensor) for val_label_tensor in val_labels_list
+                ]
+                val_outputs_list = decollate_batch(val_outputs)
+                val_output_convert = [
+                    post_pred(val_pred_tensor) for val_pred_tensor in val_outputs_list
+                ]
+                dice_metric(y_pred=val_output_convert, y=val_labels_convert)
+                dice = dice_metric.aggregate().item()
+                dice_vals.append(dice)
+                epoch_iterator_val.set_description(
+                    "Validate (%d / %d Steps) (dice=%2.5f)" % (global_step, 10.0, dice)
+                )
 
-    val_ds = Dataset(data=val_Data, transform=train_Transforms)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=True, num_workers=4)
+            dice_metric.reset()
 
-    for epoch in range(max_epochs):
-        print("-" * 10)
-        print(f"epoch {epoch + 1}/{max_epochs}")
+        mean_dice_val = np.mean(dice_vals)
+        return mean_dice_val
+
+
+    def train(global_step, train_loader, dice_val_best, global_step_best):
         model.train()
         epoch_loss = 0
-        epoch_cl_loss = 0
-        epoch_recon_loss = 0
         step = 0
-
-        for batch_data in train_loader:
+        epoch_iterator = tqdm(
+            train_loader, desc="Training (X / X Steps) (loss=X.X)", dynamic_ncols=True
+        )
+        for step, batch in enumerate(epoch_iterator):
             step += 1
-            start_time = time.time()
-
-            inputs, inputs_2, gt_input = (
-                batch_data["image"].to(device),
-                batch_data["image_2"].to(device),
-                batch_data["gt_image"].to(device),
-            )
-            optimizer.zero_grad()
-            outputs_v1, hidden_v1 = model(inputs)
-            outputs_v2, hidden_v2 = model(inputs_2)
-
-            flat_out_v1 = outputs_v1.flatten(start_dim=1, end_dim=4)
-            flat_out_v2 = outputs_v2.flatten(start_dim=1, end_dim=4)
-
-            r_loss = recon_loss(outputs_v1, gt_input)
-            cl_loss = contrastive_loss(flat_out_v1, flat_out_v2)
-
-            # Adjust the CL loss by Recon Loss
-            total_loss = r_loss + cl_loss * r_loss
-
-            total_loss.backward()
+            x, y = (batch["image"].cuda(), batch["label"].cuda())
+            logit_map = model(x)
+            loss = loss_function(logit_map, y)
+            loss.backward()
+            epoch_loss += loss.item()
             optimizer.step()
-            epoch_loss += total_loss.item()
-            step_loss_values.append(total_loss.item())
+            optimizer.zero_grad()
+            epoch_iterator.set_description(
+                "Training (%d / %d Steps) (loss=%2.5f)" % (global_step, max_iterations, loss)
+            )
 
-            # CL & Recon Loss Storage of Value
-            epoch_cl_loss += cl_loss.item()
-            epoch_recon_loss += r_loss.item()
-
-            end_time = time.time()
-            print(end_time)
-            print(
-                f"{step}/{len(train_ds) // train_loader.batch_size}, "
-                f"train_loss: {total_loss.item():.4f}, "
-                f"time taken: {end_time - start_time}s")
-
-        epoch_loss /= step
-        epoch_cl_loss /= step
-        epoch_recon_loss /= step
-
-        epoch_loss_values.append(epoch_loss)
-        epoch_cl_loss_values.append(epoch_cl_loss)
-        epoch_recon_loss_values.append(epoch_recon_loss)
-        print(f"epoch {epoch + 1} average loss: {epoch_loss:.4f}")
-
-        if epoch % val_interval == 0:
-            print('Entering Validation for epoch: {}'.format(epoch + 1))
-            total_val_loss = 0
-            val_step = 0
-            model.eval()
-            for val_batch in val_loader:
-                val_step += 1
-                start_time = time.time()
-                inputs, gt_input = (
-                    val_batch["image"].to(device),
-                    val_batch["gt_image"].to(device),
+            if (global_step % eval_num == 0 and global_step != 0) or global_step == max_iterations:
+                epoch_iterator_val = tqdm(
+                    val_loader, desc="Validate (X / X Steps) (dice=X.X)", dynamic_ncols=True
                 )
-                print('Input shape: {}'.format(inputs.shape))
-                outputs, outputs_v2 = model(inputs)
-                val_loss = recon_loss(outputs, gt_input)
-                total_val_loss += val_loss.item()
-                end_time = time.time()
+                dice_val = validation(epoch_iterator_val)
 
-            total_val_loss /= val_step
-            val_loss_values.append(total_val_loss)
-            print(
-                f"epoch {epoch + 1} Validation average loss: {total_val_loss:.4f}, " f"time taken: {end_time - start_time}s")
+                epoch_loss /= step
+                epoch_loss_values.append(epoch_loss)
+                metric_values.append(dice_val)
+                if dice_val > dice_val_best:
+                    dice_val_best = dice_val
+                    global_step_best = global_step
+                    torch.save(
+                        model.state_dict(), os.path.join(logdir, "best_metric_model.pth")
+                    )
+                    print(
+                        "Model Was Saved ! Current Best Avg. Dice: {} Current Avg. Dice: {}".format(
+                            dice_val_best, dice_val
+                        )
+                    )
+                else:
+                    print(
+                        "Model Was Not Saved ! Current Best Avg. Dice: {} Current Avg. Dice: {}".format(
+                            dice_val_best, dice_val
+                        )
+                    )
 
-            if total_val_loss < best_val_loss:
-                print(f"Saving new model based on validation loss {total_val_loss:.4f}")
-                best_val_loss = total_val_loss
-                checkpoint = {'epoch': max_epochs,
-                              'state_dict': model.state_dict(),
-                              'optimizer': optimizer.state_dict()
-                              }
-                torch.save(checkpoint, os.path.join(logdir_path, 'best_model.pt'))
+                plt.figure(1, (12, 6))
+                plt.subplot(1, 2, 1)
+                plt.title("Iteration Average Loss")
+                x = [eval_num * (i + 1) for i in range(len(epoch_loss_values))]
+                y = epoch_loss_values
+                plt.xlabel("Iteration")
+                plt.plot(x, y)
+                plt.grid()
+                plt.subplot(1, 2, 2)
+                plt.title("Val Mean Dice")
+                x = [eval_num * (i + 1) for i in range(len(metric_values))]
+                y = metric_values
+                plt.xlabel("Iteration")
+                plt.plot(x, y)
+                plt.grid()
+                plt.savefig(os.path.join(logdir, 'btcv_finetune_quick_update.png'))
+                plt.clf()
+                plt.close(1)
 
-            plt.figure(1, figsize=(8, 8))
-            plt.subplot(2, 2, 1)
-            plt.plot(epoch_loss_values)
-            plt.grid()
-            plt.title('Training Loss')
+            global_step += 1
+        return global_step, dice_val_best, global_step_best
 
-            plt.subplot(2, 2, 2)
-            plt.plot(val_loss_values)
-            plt.grid()
-            plt.title('Validation Loss')
+    while global_step < max_iterations:
+        global_step, dice_val_best, global_step_best = train(
+            global_step, train_loader, dice_val_best, global_step_best
+        )
+    model.load_state_dict(torch.load(os.path.join(logdir, "best_metric_model.pth")))
 
-            plt.subplot(2, 2, 3)
-            plt.plot(epoch_cl_loss_values)
-            plt.grid()
-            plt.title('Training Contrastive Loss')
+    print(
+        f"train completed, best_metric: {dice_val_best:.4f} "
+        f"at iteration: {global_step_best}"
+    )
 
-            plt.subplot(2, 2, 4)
-            plt.plot(epoch_recon_loss_values)
-            plt.grid()
-            plt.title('Training Recon Loss')
-
-            plt.savefig(os.path.join(logdir_path, 'loss_plots.png'))
-            plt.close(1)
-
-    print('Done')
-    return None
-
-
-if __name__ == "__main__":
+if __name__=="__main__":
     main()

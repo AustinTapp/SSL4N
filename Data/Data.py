@@ -3,18 +3,19 @@ import glob
 from torch.utils.data import Dataset
 from monai.data import DataLoader
 from monai.transforms import (
-    LoadImaged,
+    AsDiscrete,
+    AddChanneld,
     Compose,
     CropForegroundd,
-    CopyItemsd,
-    SpatialPadd,
-    EnsureChannelFirstd,
+    LoadImaged,
+    Orientationd,
+    RandFlipd,
+    RandCropByPosNegLabeld,
+    RandShiftIntensityd,
+    ScaleIntensityD,
     Spacingd,
-    OneOf,
-    ScaleIntensityRanged,
-    RandSpatialCropSamplesd,
-    RandCoarseDropoutd,
-    RandCoarseShuffled
+    RandRotate90d,
+    ToTensord,
 )
 
 class NiftiData(Dataset):
@@ -23,50 +24,69 @@ class NiftiData(Dataset):
         # self.path = os.path.join(os.getcwd()+'\\Images')
 
         # for standard training
-        self.path = os.path.join(os.getcwd()+'\\Data\\Images')
-        self.image_path = glob.glob(self.path + '\\*')
+        self.path = 'D:\\Data\\Brain\\OASIS\\Images\\AsNifti'
+        self.image_path = sorted(glob.glob(self.path + '\\*'))
+        self.seg = 'D:\\Data\\Brain\\OASIS\\Segs\\AsNifti'
+        self.seg_path = sorted(glob.glob(self.seg + '\\*'))
+
 
         self.transform = Compose(
 
             [
-                LoadImaged(keys=["image"]),
-                EnsureChannelFirstd(keys=["image"]),
-                OrientationD(keys=["image"], axcodes='RAI'),
-                Spacingd(keys=["image"], pixdim=(
-                    1.0, 1.0, 1.0), mode=("bilinear")),
-                # segmentation change to nearest
+                LoadImaged(keys=["image", "label"]),
+                AddChanneld(keys=["image", "label"]),
+                Orientationd(keys=["image", "label"], axcodes='RAI'),
                 ScaleIntensityD(keys=["image"], minv=0.0, maxv=1.0),
-                CropForegroundd(keys=["image"], source_key="image"),
-                SpatialPadd(keys=["image"], spatial_size=(96, 96, 96)),
-                RandSpatialCropSamplesd(keys=["image"], roi_size=(96, 96, 96), random_size=False, num_samples=1),
-                CopyItemsd(keys=["image"], times=2, names=["gt_image", "image_2"], allow_missing_keys=False),
-                OneOf(transforms=[
-                    RandCoarseDropoutd(keys=["image"], prob=1.0, holes=6, spatial_size=5, dropout_holes=True,
-                                       max_spatial_size=32),
-                    RandCoarseDropoutd(keys=["image"], prob=1.0, holes=6, spatial_size=20, dropout_holes=False,
-                                       max_spatial_size=64),
-                ]
+                CropForegroundd(keys=["image", "label"], source_key="image"),
+                RandCropByPosNegLabeld(
+                    keys=["image", "label"],
+                    label_key="label",
+                    spatial_size=(96, 96, 96),
+                    pos=1,
+                    neg=1,
+                    num_samples=4,
+                    image_key="image",
+                    image_threshold=0,
                 ),
-                RandCoarseShuffled(keys=["image"], prob=0.8, holes=10, spatial_size=8),
-                OneOf(transforms=[
-                    RandCoarseDropoutd(keys=["image_2"], prob=1.0, holes=6, spatial_size=5, dropout_holes=True,
-                                       max_spatial_size=32),
-                    RandCoarseDropoutd(keys=["image_2"], prob=1.0, holes=6, spatial_size=20, dropout_holes=False,
-                                       max_spatial_size=64),
-                ]
+                RandFlipd(
+                    keys=["image", "label"],
+                    spatial_axis=[0],
+                    prob=0.10,
                 ),
-                RandCoarseShuffled(keys=["image_2"], prob=0.8, holes=10, spatial_size=8),
-
+                RandFlipd(
+                    keys=["image", "label"],
+                    spatial_axis=[1],
+                    prob=0.10,
+                ),
+                RandFlipd(
+                    keys=["image", "label"],
+                    spatial_axis=[2],
+                    prob=0.10,
+                ),
+                RandRotate90d(
+                    keys=["image", "label"],
+                    prob=0.10,
+                    max_k=3,
+                ),
+                RandShiftIntensityd(
+                    keys=["image"],
+                    offsets=0.10,
+                    prob=0.50,
+                ),
             ]
         )
 
     def __len__(self):
         return len(self.image_path)
 
+    def transform_data(self, data_dict: dict):
+        return self.transform(data_dict)
+
     def __getitem__(self, index):
-        single_path = self.image_path[index]
-        image = {"image": single_path}
-        return self.transform(image)
+        image_path = self.image_path[index]
+        segmentation_path = self.seg_path[index]
+        image = {"image": image_path, "label": segmentation_path}
+        return self.transform_data(image)
 
     def get_sample(self):
         return self.image_path

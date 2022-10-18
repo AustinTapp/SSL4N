@@ -1,8 +1,6 @@
 import torch.nn as nn
-import torch
-
 from monai.networks.nets import ViTAutoEnc
-from monai.networks.nets import SwinUNETR
+from monai.networks.nets import UNETR
 
 
 class ViTA(nn.Module):
@@ -21,25 +19,22 @@ class ViTA(nn.Module):
         return self.ViTrans(images)
 
 
-class sUNETR(nn.Module):
+class SegNet(nn.Module):
     def __init__(self, img_size=(None, None, None), in_channels: int = None, out_channels: int = None):
 
         super().__init__()
-        Unet = SwinUNETR(img_size=img_size,
-                         in_channels=in_channels,
-                         out_channels=out_channels,
-                         depths=(2, 2, 2, 2),
-                         num_heads=(3, 6, 12, 24),
-                         feature_size=24,
-                         norm_name='instance',
-                         drop_rate=0.0,
-                         attn_drop_rate=0.0,
-                         dropout_path_rate=0.0,
-                         normalize=True,
-                         use_checkpoint=False,
-                         spatial_dims=3,
-                         downsample='merging'
-                         )
+        self.Unetr = UNETR(in_channels=1,
+                     out_channels=4,
+                     img_size=(96, 96, 96),
+                     feature_size=16,
+                     hidden_size=768,
+                     mlp_dim=3072,
+                     num_heads=12,
+                     pos_embed="conv",
+                     norm_name="instance",
+                     res_block=True,
+                     dropout_rate=0.0,
+                     )
 
 
 

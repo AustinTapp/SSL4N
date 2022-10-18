@@ -1,15 +1,21 @@
 import os
+import nibabel as nb
 import shutil
 
 if __name__ == '__main__':
-    data_dir = "D:\\Data\\Brain"
-    dest_dir = "D:\\Data\\SSL4N"
+    data_dir = "D:\\Data\\Brain\\OASIS\\Oasis"
+    img_dest_dir = "D:\\Data\\Brain\\OASIS\\Images"
+    seg_dest_dir = "D:\\Data\\Brain\\OASIS\\Segs"
 
     for root, dirs, files in os.walk(data_dir):
         for name in files:
-            if name.endswith(("_t1.nii.gz", "_t1ce.nii.gz", "-T1.nii.gz")):
-                file = root+"\\"+name
-                #print(file)
-                shutil.copy(file, dest_dir)
+            if name.endswith(("_t88_gfc.img", "_t88_gfc.hdr")):
+                file = os.path.join(root, name)
+                shutil.copy(file, img_dest_dir)
 
-    print("Done!")
+    for root, dirs, files in os.walk(data_dir):
+        for name in files:
+            if name.endswith(("fseg.img", "fseg.hdr")):
+                file = os.path.join(root, name)
+                shutil.copy(file, seg_dest_dir)
+
