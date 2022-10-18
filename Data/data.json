@@ -1,9 +1,12 @@
 {
   "training": [
-    { "image": "30.nii.gz" },
-    { "image": "32.nii.gz" }
+    { "image": "IXI002-Guys-0828-T1.nii.gz" },
+    { "image": "IXI012-HH-1211-T1.nii.gz" },
+    {"image": "IXI013-HH-1212-T1.nii.gz"},
+    {"image": "IXI013-HH-1212-T1.nii.gz"},
+    {"image":  "IXI014-HH-1236-T1.nii.gz"}
   ],
   "validation": [
-    { "image": "33.nii.gz" }
+    { "image": "IXI015-HH-1258-T1.nii.gz" }
   ]
 }

@@ -13,7 +13,8 @@ if __name__ == "__main__":
     wandb_logger = WandbLogger(project="SSL4N")
 
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
-    checkpoint_callback = ModelCheckpoint(dirpath="./saved_models/loss/", save_top_k=1, monitor="val_loss", save_on_train_epoch_end=True)
+    checkpoint_callback = ModelCheckpoint(dirpath="saved_models\\loss\\", save_top_k=1, monitor="val_loss", save_on_train_epoch_end=True)
+    last_chpt = "./saved_models/loss/" + "epoch=238-step=287.ckpt"
 
     trainer = Trainer(
         logger=wandb_logger,
@@ -22,11 +23,12 @@ if __name__ == "__main__":
         max_epochs=500,
         callbacks=[lr_monitor, checkpoint_callback],
         log_every_n_steps=1,
+        precision=16
     )
 
     trainer.fit(
-        model=ViTATrain(),
-        #ckpt_path=last_chpt,
+        model=ViTATrain(batch_size=8),
+        ckpt_path=last_chpt,
         datamodule=MRIdata(
-            batch_size=1)
+            batch_size=8)
     )

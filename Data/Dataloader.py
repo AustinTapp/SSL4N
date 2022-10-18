@@ -11,8 +11,8 @@ class MRIdata(LightningDataModule):
         self.batch_size = batch_size
 
     def train_dataloader(self):
-        return DataLoader(self.train, batch_size=self.batch_size, num_workers=16)
+        return DataLoader(self.train, batch_size=self.batch_size, num_workers=5, drop_last=True)
 
     def val_dataloader(self):
-        return DataLoader(self.val, batch_size=self.batch_size, num_workers=16)
+        return DataLoader(self.val, batch_size=self.batch_size, num_workers=5, drop_last=True)
 
