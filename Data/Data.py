@@ -1,21 +1,23 @@
 import os
 import glob
+
+import torch
 from torch.utils.data import Dataset
 from monai.data import DataLoader
 from monai.transforms import (
-    AsDiscrete,
     AddChanneld,
     Compose,
     CropForegroundd,
     LoadImaged,
     Orientationd,
     RandFlipd,
-    RandCropByPosNegLabeld,
+    RandCropd,
     RandShiftIntensityd,
     ScaleIntensityD,
     Spacingd,
+    SpatialPadd,
+    RandSpatialCropSamplesd,
     RandRotate90d,
-    ToTensord,
 )
 
 class NiftiData(Dataset):
@@ -24,9 +26,9 @@ class NiftiData(Dataset):
         # self.path = os.path.join(os.getcwd()+'\\Images')
 
         # for standard training
-        self.path = 'D:\\Data\\Brain\\OASIS\\Images\\AsNifti'
+        self.path = 'C:\\Users\\pmilab\\Auxil\\SSL4N\\Data\\SSL4N_seg_initial\\ImagesAsNifti'
         self.image_path = sorted(glob.glob(self.path + '\\*'))
-        self.seg = 'D:\\Data\\Brain\\OASIS\\Segs\\AsNifti'
+        self.seg = 'C:\\Users\\pmilab\\Auxil\\SSL4N\\Data\\SSL4N_seg_initial\\SegsAsNifti'
         self.seg_path = sorted(glob.glob(self.seg + '\\*'))
 
 
@@ -36,18 +38,11 @@ class NiftiData(Dataset):
                 LoadImaged(keys=["image", "label"]),
                 AddChanneld(keys=["image", "label"]),
                 Orientationd(keys=["image", "label"], axcodes='RAI'),
+                Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
                 ScaleIntensityD(keys=["image"], minv=0.0, maxv=1.0),
                 CropForegroundd(keys=["image", "label"], source_key="image"),
-                RandCropByPosNegLabeld(
-                    keys=["image", "label"],
-                    label_key="label",
-                    spatial_size=(96, 96, 96),
-                    pos=1,
-                    neg=1,
-                    num_samples=4,
-                    image_key="image",
-                    image_threshold=0,
-                ),
+                SpatialPadd(keys=["image", "label"], spatial_size=(96, 96, 96)),
+                RandSpatialCropSamplesd(keys=["image", "label"], roi_size=(96, 96, 96), random_size=False, num_samples=1),
                 RandFlipd(
                     keys=["image", "label"],
                     spatial_axis=[0],
@@ -86,7 +81,15 @@ class NiftiData(Dataset):
         image_path = self.image_path[index]
         segmentation_path = self.seg_path[index]
         image = {"image": image_path, "label": segmentation_path}
-        return self.transform_data(image)
+        image_transformed = self.transform_data(image)
+        labels = []
+        for i in range(4):
+            zeros = torch.zeros_like(image_transformed[0]["label"])
+            zeros[image_transformed[0]["label"] == i] = 1
+            labels.append(zeros)
+        modified_label = torch.stack(labels, dim=1)
+        image_transformed[0]["label"] = torch.squeeze(modified_label, 0)
+        return image_transformed
 
     def get_sample(self):
         return self.image_path

@@ -1,11 +1,13 @@
+import monai.data
 from monai.networks.nets import UNETR
-from monai.losses import DiceCELoss
+from monai.losses import DiceCELoss, DiceLoss
 import numpy as np
 from pytorch_lightning import LightningModule
 import torch
 
 class UNetR_Train(LightningModule):
-    def __init__(self, in_channels=4, img_size=(1, 1, 96, 96, 96), patch_size=(16, 16, 16), batch_size=1, lr=1e-5):
+    def __init__(self, in_channels=4, img_size=(1, 1, 96, 96, 96), patch_size=(16, 16, 16), batch_size=1, lr=1e-5,
+                 ckpt_path = "C:\\Users\\pmilab\\Auxil\\SSL4N\\saved_models\\Saved\\T1inf_FT_2_epoch=246-step=248.ckpt"):
         super().__init__()
 
         self.save_hyperparameters()
@@ -24,17 +26,17 @@ class UNetR_Train(LightningModule):
                      dropout_rate=0.0,
                      )
 
-        self.checkpoint = torch.load(self.hparams.vit_ckpt_path)
+        self.checkpoint = torch.load(self.hparams.ckpt_path)
         self.vit_weights = self.checkpoint['state_dict']
         self.model_dict = self.model.vit.state_dict()
         self.vit_weights = {k: v for k, v in self.vit_weights.items() if k in self.model_dict}
         self.model_dict.update(self.vit_weights)
         self.model.vit.load_state_dict(self.model_dict)
-        self.model.load_state_dict(self.model_dict)
-        del self.model_dict, self.vit_weights, self.vit_dict
+        del self.model_dict, self.vit_weights, self.checkpoint
         print('Pretrained Weights Succesfully Loaded !')
 
-        self.DSC_Loss = DiceCELoss(to_onehot_y=True, softmax=True)
+        self.DSCE_Loss = DiceCELoss(to_onehot_y=False, softmax=True)
+        self.DSC_Loss = DiceLoss(include_background=False)
 
     def forward(self, inputs):
         outputs = self.model(inputs)
@@ -55,36 +57,38 @@ class UNetR_Train(LightningModule):
         return optimizer
 
     def _prepare_batch(self, batch):
-        return batch['image'], batch['label']
+        return batch[0]['image'], batch[0]['label']
 
     def _common_step(self, batch, batch_idx, stage: str):
         inputs, gt_input = self._prepare_batch(batch)
 
         outputs = self.forward(inputs)
-        DSC_loss = self.DSC_Loss(outputs, gt_input)
+        DSCE_loss = self.DSCE_Loss(outputs, gt_input)
+        DSC = 1 - (self.DSC_Loss(outputs, gt_input))
         train_steps = self.current_epoch + batch_idx
+        #(outputs.detach().cpu().numpy().argmax(1)) prediction output for 4 labels
 
         self.log_dict({
-            f'{stage}_loss': DSC_loss.item(),
+            f'{stage}_loss': DSCE_loss.item(),
+            f'{stage}_DSC': DSC.item(),
             'step': float(train_steps),
             'epoch': float(self.current_epoch)}, batch_size=self.hparams.batch_size)
 
         if train_steps % 100 == 0:
             self.log_dict({
-                'DSC_Loss': DSC_loss.item(),
+                'DSCE_Loss': DSCE_loss.item(),
                 'epoch': float(self.current_epoch),
                 'step': float(train_steps)}, batch_size=self.hparams.batch_size)
             self.logger.log_image(key="Ground Truth", images=[
-                (gt_input.detach().cpu().numpy()*255)[0, 0, :, :, 38]],
+                ((gt_input.detach().cpu().numpy().argmax(1))*85)[0, :, :, 38]],
                 caption=["GT Segmentations"])
-            self.logger.log_image(key="Input (Transformed) Images", images=[
+            self.logger.log_image(key="Input Image", images=[
                 (inputs.detach().cpu().numpy()*255)[0, 0, :, :, 38]],
                 caption=["Input Image"])
-            outputs_v1_array = np.clip(outputs.detach().cpu().numpy(), 0, 1)
-            self.logger.log_image(key="Reconstructed Images", images=[
-                (outputs_v1_array*255)[0, 0, :, :, 38]],
+            self.logger.log_image(key="Prediction", images=[
+                ((outputs.detach().cpu().numpy().argmax(1))*85)[0, :, :, 38]],
                 caption=["Segmentations "])
 
-        return DSC_loss
+        return DSCE_loss
 
 
