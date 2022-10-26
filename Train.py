@@ -31,5 +31,3 @@ if __name__ == "__main__":
             batch_size=4),
        ckpt_path=checkpoint_path
     )
-
-#change to fine tune for segmentaitons (ALZ)

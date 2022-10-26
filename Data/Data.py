@@ -26,10 +26,14 @@ class NiftiData(Dataset):
         # self.path = os.path.join(os.getcwd()+'\\Images')
 
         # for standard training
-        self.path = 'C:\\Users\\pmilab\\Auxil\\SSL4N\\Data\\SSL4N_seg_fine_tune\\Train\\Images'
+        # self.path = 'D:\\Data\\Brain\\OASIS\\Images\\AsNifti'
+        # self.image_path = sorted(glob.glob(self.path + '\\*'))
+        # self.seg = 'D:\\Data\\Brain\\OASIS\\Segs\\AsNifti'
+        # self.seg_path = sorted(glob.glob(self.seg + '\\*'))
+
+        #for prediction
+        self.path = 'D:\\Data\\Brain\\OASIS\\Images\\AsNifti'
         self.image_path = sorted(glob.glob(self.path + '\\*'))
-        self.seg = 'C:\\Users\\pmilab\\Auxil\\SSL4N\\Data\\SSL4N_seg_fine_tune\\Train\\segments'
-        self.seg_path = sorted(glob.glob(self.seg + '\\*'))
 
 
         self.transform = Compose(
@@ -71,6 +75,17 @@ class NiftiData(Dataset):
             ]
         )
 
+        self.prediction_transform = Compose(
+
+            [
+                LoadImaged(keys=["image"]),
+                AddChanneld(keys=["image"]),
+                Orientationd(keys=["image"], axcodes='RAI'),
+                ScaleIntensityD(keys=["image"], minv=0.0, maxv=1.0),
+                CropForegroundd(keys=["image"], source_key="image"),
+            ]
+        )
+
     def __len__(self):
         return len(self.image_path)
 
@@ -79,17 +94,23 @@ class NiftiData(Dataset):
 
     def __getitem__(self, index):
         image_path = self.image_path[index]
-        segmentation_path = self.seg_path[index]
-        image = {"image": image_path, "label": segmentation_path}
-        image_transformed = self.transform_data(image)
-        labels = []
-        for i in range(4):
-            zeros = torch.zeros_like(image_transformed[0]["label"])
-            zeros[image_transformed[0]["label"] == i] = 1
-            labels.append(zeros)
-        modified_label = torch.stack(labels, dim=1)
-        image_transformed[0]["label"] = torch.squeeze(modified_label, 0)
-        return image_transformed
+
+        # For training
+        # segmentation_path = self.seg_path[index]
+        # image = {"image": image_path, "label": segmentation_path}
+        # image_transformed = self.transform_data(image)
+        # labels = []
+        # for i in range(4):
+        #     zeros = torch.zeros_like(image_transformed[0]["label"])
+        #     zeros[image_transformed[0]["label"] == i] = 1
+        #     labels.append(zeros)
+        # modified_label = torch.stack(labels, dim=1)
+        # image_transformed[0]["label"] = torch.squeeze(modified_label, 0)
+        # return image_transformed
+
+        # For prediction
+        image = {"image": image_path}
+        return self.prediction_transform(image)
 
     def get_sample(self):
         return self.image_path

@@ -1,4 +1,3 @@
-import monai.data
 from monai.networks.nets import UNETR
 from monai.losses import DiceCELoss, DiceLoss
 import numpy as np
@@ -49,9 +48,10 @@ class UNetR_Train(LightningModule):
     def validation_step(self, batch, batch_idx):
         self._common_step(batch, batch_idx, "val")
 
-    # def predict_step(self, batch, batch_idx, dataloader_idx=None):
-    #     img = self._prepare_batch(batch)
-    #     return self.forward(img)
+    def predict_step(self, batch, batch_idx, dataloader_idx=None):
+        img = self._prepare_batch(batch)
+        image = img[0]
+        return self.forward(image)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=1e-5)

@@ -7,7 +7,8 @@ class MRIdata(LightningDataModule):
         super().__init__()
         scans = NiftiData()
 
-        self.train, self.val = random_split(scans, [int(len(scans) * 0.8), len(scans) - int(len(scans) * 0.8)], )
+        self.train, self.val = random_split(scans, [int(len(scans) * 0.8), len(scans) - int(len(scans) * 0.8)])
+        self.predict = scans
         self.batch_size = batch_size
 
     def train_dataloader(self):
@@ -16,8 +17,5 @@ class MRIdata(LightningDataModule):
     def val_dataloader(self):
         return DataLoader(self.val, batch_size=self.batch_size, num_workers=4)
 
-    # def test_dataloader(self):
-    #     return DataLoader(self.test, batch_size=self.batch_size, num_workers=16)
-    #
-    # def predict_dataloader(self):
-    #     return DataLoader(self.val, batch_size=self.batch_size, num_workers=16)
+    def predict_dataloader(self):
+        return DataLoader(self.val, batch_size=self.batch_size, num_workers=16)
