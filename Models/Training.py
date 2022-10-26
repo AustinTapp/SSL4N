@@ -6,8 +6,9 @@ from pytorch_lightning import LightningModule
 import torch
 
 class UNetR_Train(LightningModule):
-    def __init__(self, in_channels=4, img_size=(1, 1, 96, 96, 96), patch_size=(16, 16, 16), batch_size=1, lr=1e-5,
-                 ckpt_path = "C:\\Users\\pmilab\\Auxil\\SSL4N\\saved_models\\Saved\\T1inf_FT_2_epoch=246-step=248.ckpt"):
+    def __init__(self, in_channels=4, img_size=(1, 1, 96, 96, 96), patch_size=(16, 16, 16), batch_size=1, lr=1e-5):
+        # ckpt_path = "C:\\Users\\pmilab\\Auxil\\SSL4N\\saved_models\\Saved\\T1inf_FT_2_epoch=246-step=248.ckpt"):
+
         super().__init__()
 
         self.save_hyperparameters()
@@ -26,14 +27,14 @@ class UNetR_Train(LightningModule):
                      dropout_rate=0.0,
                      )
 
-        self.checkpoint = torch.load(self.hparams.ckpt_path)
-        self.vit_weights = self.checkpoint['state_dict']
-        self.model_dict = self.model.vit.state_dict()
-        self.vit_weights = {k: v for k, v in self.vit_weights.items() if k in self.model_dict}
-        self.model_dict.update(self.vit_weights)
-        self.model.vit.load_state_dict(self.model_dict)
-        del self.model_dict, self.vit_weights, self.checkpoint
-        print('Pretrained Weights Succesfully Loaded !')
+        # self.checkpoint = torch.load(self.hparams.ckpt_path)
+        # self.vit_weights = self.checkpoint['state_dict']
+        # self.model_dict = self.model.vit.state_dict()
+        # self.vit_weights = {k: v for k, v in self.vit_weights.items() if k in self.model_dict}
+        # self.model_dict.update(self.vit_weights)
+        # self.model.vit.load_state_dict(self.model_dict)
+        # del self.model_dict, self.vit_weights, self.checkpoint
+        # print('Pretrained Weights Succesfully Loaded !')
 
         self.DSCE_Loss = DiceCELoss(to_onehot_y=False, softmax=True)
         self.DSC_Loss = DiceLoss(include_background=False)
@@ -64,19 +65,20 @@ class UNetR_Train(LightningModule):
 
         outputs = self.forward(inputs)
         DSCE_loss = self.DSCE_Loss(outputs, gt_input)
-        DSC = 1 - (self.DSC_Loss(outputs, gt_input))
+        DSC = self.DSC_Loss(outputs, gt_input)
         train_steps = self.current_epoch + batch_idx
         #(outputs.detach().cpu().numpy().argmax(1)) prediction output for 4 labels
 
         self.log_dict({
-            f'{stage}_loss': DSCE_loss.item(),
-            f'{stage}_DSC': DSC.item(),
+            f'{stage}_DSCE_loss': DSCE_loss.item(),
+            f'{stage}_DSC_loss': DSC.item(),
             'step': float(train_steps),
             'epoch': float(self.current_epoch)}, batch_size=self.hparams.batch_size)
 
-        if train_steps % 100 == 0:
+        if train_steps % 10 == 0:
             self.log_dict({
                 'DSCE_Loss': DSCE_loss.item(),
+                'DSC_Loss': DSC.item(),
                 'epoch': float(self.current_epoch),
                 'step': float(train_steps)}, batch_size=self.hparams.batch_size)
             self.logger.log_image(key="Ground Truth", images=[

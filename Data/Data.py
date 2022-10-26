@@ -26,9 +26,9 @@ class NiftiData(Dataset):
         # self.path = os.path.join(os.getcwd()+'\\Images')
 
         # for standard training
-        self.path = 'C:\\Users\\pmilab\\Auxil\\SSL4N\\Data\\SSL4N_seg_initial\\ImagesAsNifti'
+        self.path = 'C:\\Users\\pmilab\\Auxil\\SSL4N\\Data\\SSL4N_seg_fine_tune\\Train\\Images'
         self.image_path = sorted(glob.glob(self.path + '\\*'))
-        self.seg = 'C:\\Users\\pmilab\\Auxil\\SSL4N\\Data\\SSL4N_seg_initial\\SegsAsNifti'
+        self.seg = 'C:\\Users\\pmilab\\Auxil\\SSL4N\\Data\\SSL4N_seg_fine_tune\\Train\\segments'
         self.seg_path = sorted(glob.glob(self.seg + '\\*'))
 
 
