@@ -48,10 +48,8 @@ class UNetR_Train(LightningModule):
     def validation_step(self, batch, batch_idx):
         self._common_step(batch, batch_idx, "val")
 
-    def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        img = self._prepare_batch(batch)
-        image = img[0]
-        return self.forward(image)
+    def predict_step(self, batch, batch_idx, dataloader_idx=0):
+        return self(batch['image'])
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=1e-5)
@@ -62,12 +60,10 @@ class UNetR_Train(LightningModule):
 
     def _common_step(self, batch, batch_idx, stage: str):
         inputs, gt_input = self._prepare_batch(batch)
-
         outputs = self.forward(inputs)
         DSCE_loss = self.DSCE_Loss(outputs, gt_input)
         DSC = self.DSC_Loss(outputs, gt_input)
         train_steps = self.current_epoch + batch_idx
-        #(outputs.detach().cpu().numpy().argmax(1)) prediction output for 4 labels
 
         self.log_dict({
             f'{stage}_DSCE_loss': DSCE_loss.item(),

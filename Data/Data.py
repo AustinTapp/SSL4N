@@ -13,6 +13,7 @@ from monai.transforms import (
     RandFlipd,
     RandCropd,
     RandShiftIntensityd,
+    Resized,
     ScaleIntensityD,
     Spacingd,
     SpatialPadd,
@@ -32,7 +33,7 @@ class NiftiData(Dataset):
         # self.seg_path = sorted(glob.glob(self.seg + '\\*'))
 
         #for prediction
-        self.path = 'D:\\Data\\Brain\\OASIS\\Images\\AsNifti'
+        self.path = 'C:\\Users\\pmilab\\Auxil\\SSL4N\\Data\\SSL4N_seg_fine_tune\\Test\\segments'
         self.image_path = sorted(glob.glob(self.path + '\\*'))
 
 
@@ -81,8 +82,11 @@ class NiftiData(Dataset):
                 LoadImaged(keys=["image"]),
                 AddChanneld(keys=["image"]),
                 Orientationd(keys=["image"], axcodes='RAI'),
+                Spacingd(keys=["image"], pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
                 ScaleIntensityD(keys=["image"], minv=0.0, maxv=1.0),
                 CropForegroundd(keys=["image"], source_key="image"),
+                SpatialPadd(keys=["image"], spatial_size=(96, 96, 96)),
+                Resized(keys=["image"], spatial_size=(96, 96, 96))
             ]
         )
 
@@ -112,6 +116,8 @@ class NiftiData(Dataset):
         image = {"image": image_path}
         return self.prediction_transform(image)
 
-    def get_sample(self):
-        return self.image_path
+    def get_sample(self, index):
+        image_path = self.image_path[index]
+        image = {"image": image_path}
+        return self.prediction_transform(image)
 
