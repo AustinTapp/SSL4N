@@ -5,7 +5,7 @@ from pytorch_lightning import LightningModule
 import torch
 
 class UNetR_Train(LightningModule):
-    def __init__(self, in_channels=4, img_size=(1, 1, 96, 96, 96), patch_size=(16, 16, 16), batch_size=1, lr=1e-5):
+    def __init__(self, in_channels=4, img_size=(1, 1, 96, 96, 96), patch_size=(16, 16, 16), batch_size=1, lr=8e-3):
         # ckpt_path = "C:\\Users\\pmilab\\Auxil\\SSL4N\\saved_models\\Saved\\T1inf_FT_2_epoch=246-step=248.ckpt"):
 
         super().__init__()
@@ -52,8 +52,12 @@ class UNetR_Train(LightningModule):
         return self(batch['image'])
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=1e-5)
-        return optimizer
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.lr)
+        lr_scheduler = {
+            'scheduler': torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10),
+            'monitor': 'val_DSCE_loss'
+        }
+        return [optimizer], [lr_scheduler]
 
     def _prepare_batch(self, batch):
         return batch[0]['image'], batch[0]['label']
@@ -71,20 +75,20 @@ class UNetR_Train(LightningModule):
             'step': float(train_steps),
             'epoch': float(self.current_epoch)}, batch_size=self.hparams.batch_size)
 
-        if train_steps % 10 == 0:
+        if train_steps % 50 == 0:
             self.log_dict({
                 'DSCE_Loss': DSCE_loss.item(),
                 'DSC_Loss': DSC.item(),
                 'epoch': float(self.current_epoch),
                 'step': float(train_steps)}, batch_size=self.hparams.batch_size)
             self.logger.log_image(key="Ground Truth", images=[
-                ((gt_input.detach().cpu().numpy().argmax(1))*85)[0, :, :, 38]],
+                ((gt_input.detach().cpu().numpy().argmax(1))*85)[0, :, :, 48]],
                 caption=["GT Segmentations"])
             self.logger.log_image(key="Input Image", images=[
-                (inputs.detach().cpu().numpy()*255)[0, 0, :, :, 38]],
+                (inputs.detach().cpu().numpy()*255)[0, 0, :, :, 48]],
                 caption=["Input Image"])
             self.logger.log_image(key="Prediction", images=[
-                ((outputs.detach().cpu().numpy().argmax(1))*85)[0, :, :, 38]],
+                ((outputs.detach().cpu().numpy().argmax(1))*85)[0, :, :, 48]],
                 caption=["Segmentations "])
 
         return DSCE_loss

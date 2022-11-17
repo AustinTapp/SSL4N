@@ -1,6 +1,7 @@
 import os
 import glob
 import SimpleITK as sitk
+import numpy
 from monai.transforms import (
     AddChanneld,
     Compose,
@@ -29,7 +30,7 @@ class NiftiData():
                 Spacingd(keys=["image"], pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
                 CropForegroundd(keys=["image"], source_key="image"),
                 SpatialPadd(keys=["image"], spatial_size=(96, 96, 96)),
-                Resized(keys=["image"], spatial_size=(96, 96, 96))
+                Resized(keys=["image"], spatial_size=(96, 96, 96)),
             ]
         )
 
@@ -41,7 +42,6 @@ class NiftiData():
         image = {"image": image_path}
         return self.prediction_transform(image)
 
-
 if __name__ == "__main__":
     predict_path = 'C:\\Users\\pmilab\\Auxil\\SSL4N\\Data\\SSL4N_seg_fine_tune\\Test\\segments'
     image = NiftiData(predict_path)
@@ -51,5 +51,7 @@ if __name__ == "__main__":
         name = name.split(".")[0]
         name = name + "_true_adjusted.nii.gz"
         output = item['image'].detach().cpu().numpy()[0, :, :, :]
+        output = numpy.transpose(output)
+        output = numpy.flip(output, axis=(0, 1, 2))
         output = sitk.GetImageFromArray(output)
         sitk.WriteImage(output, str(os.path.join(predict_path, name)))

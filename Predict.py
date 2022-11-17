@@ -1,6 +1,6 @@
 import os
 import SimpleITK as sitk
-import torch
+import numpy
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -24,6 +24,9 @@ if __name__ == "__main__":
         name = name.split(".")[0]
         name = name + "_predict.nii.gz"
         output = predictions.detach().cpu().numpy().argmax(1)[0, :, :, :]
+        output = numpy.transpose(output)
+        output = numpy.flip(output)
         output = sitk.GetImageFromArray(output)
+        print("Writing:", name)
         sitk.WriteImage(output, str(os.path.join(predict_path, name)))
 

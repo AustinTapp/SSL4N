@@ -13,8 +13,8 @@ if __name__ == "__main__":
     wandb_logger = WandbLogger(project="SSL4N")
 
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
-    checkpoint_callback = ModelCheckpoint(dirpath="./saved_models/loss/", save_top_k=1, monitor="val_DSCE_loss", save_on_train_epoch_end=True)
-    checkpoint_path = "C:\\Users\\pmilab\\Auxil\\SSL4N\\saved_models\\loss\\epoch=356-step=356.ckpt"
+    checkpoint_callback = ModelCheckpoint(dirpath="./saved_models/loss/", save_top_k=1, save_on_train_epoch_end=True, monitor="val_DSCE_loss")
+    checkpoint_path = "C:\\Users\\pmilab\\Auxil\\SSL4N\\saved_models\\loss\\epoch=379-step=379.ckpt"
 
     trainer = Trainer(
         logger=wandb_logger,
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     )
 
     trainer.fit(
-        model=UNetR_Train(),
+        model=UNetR_Train(lr=8e-3),
         datamodule=MRIdata(
             batch_size=4),
        ckpt_path=checkpoint_path
