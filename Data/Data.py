@@ -21,10 +21,10 @@ from monai.transforms import (
 class NiftiData(Dataset):
     def __init__(self):
         # for image check
-        # self.path = os.path.join(os.getcwd()+'\\Images')
+        # self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\2M_and_6M"
 
         # for standard training
-        self.path = "C:\\Users\\pmilab\\Auxil\\SSL4N\\Data\\SSL4N_fine_tune"
+        self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\2M_and_6M"
         self.image_path = glob.glob(self.path + '\\*')
 
         self.transform = Compose(
