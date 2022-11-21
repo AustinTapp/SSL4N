@@ -24,7 +24,7 @@ class NiftiData(Dataset):
         # self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\2M_and_6M"
 
         # for standard training
-        self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\2M_and_6M"
+        self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\1M\\asNifti"
         self.image_path = glob.glob(self.path + '\\*')
 
         self.transform = Compose(
