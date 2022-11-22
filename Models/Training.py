@@ -68,7 +68,7 @@ class ViTATrain(LightningModule):
             'step': float(train_steps),
             'epoch': float(self.current_epoch)}, batch_size=self.hparams.batch_size)
 
-        if train_steps % 100 == 0:
+        if train_steps % 10 == 0:
             self.log_dict({
                 'L1': r_loss.item(),
                 'Contrastive': cl_loss.item(),
@@ -81,6 +81,8 @@ class ViTATrain(LightningModule):
                 (inputs.detach().cpu().numpy()*255)[0, 0, :, :, 38],
                 (inputs_2.detach().cpu().numpy()*255)[0, 0, :, :, 38]],
                 caption=["Input 1", "Input 2"])
+            outputs_v1 = outputs_v1.to(dtype=torch.float16)
+            outputs_v2 = outputs_v2.to(dtype=torch.float16)
             outputs_v1_array = np.clip(outputs_v1.detach().cpu().numpy(), 0, 1)
             outputs_v2_array = np.clip(outputs_v2.detach().cpu().numpy(), 0, 1)
             self.logger.log_image(key="Reconstructed Images", images=[
