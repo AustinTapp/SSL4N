@@ -7,12 +7,11 @@ from monai.transforms import (
     Compose,
     CropForegroundd,
     CopyItemsd,
-    ResizeD,
     SpatialPadd,
     EnsureChannelFirstd,
     Spacingd,
     OneOf,
-    ScaleIntensityD,
+    ScaleIntensityRangeD,
     RandSpatialCropSamplesd,
     RandCoarseDropoutd,
     RandCoarseShuffled,
@@ -24,7 +23,7 @@ class NiftiData(Dataset):
         # self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\2M_and_6M"
 
         # for standard training
-        self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\1M\\asNifti"
+        self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\1M\\asNifti_NoBed"
         self.image_path = glob.glob(self.path + '\\*')
 
         self.transform = Compose(
@@ -36,7 +35,7 @@ class NiftiData(Dataset):
                 Spacingd(keys=["image"], pixdim=(
                     1.0, 1.0, 1.0), mode=("bilinear")),
                 # segmentation change to nearest
-                ScaleIntensityD(keys=["image"], minv=0.0, maxv=1.0),
+                ScaleIntensityRangeD(keys=["image"], a_min=-500, a_max=3000, b_min=0, b_max=1),
                 CropForegroundd(keys=["image"], source_key="image"),
                 SpatialPadd(keys=["image"], spatial_size=(96, 96, 96)),
                 RandSpatialCropSamplesd(keys=["image"], roi_size=(96, 96, 96), random_size=False, num_samples=1),

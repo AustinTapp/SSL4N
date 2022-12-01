@@ -68,7 +68,7 @@ class ViTATrain(LightningModule):
             'step': float(train_steps),
             'epoch': float(self.current_epoch)}, batch_size=self.hparams.batch_size)
 
-        if train_steps % 10 == 0:
+        if train_steps % 100 == 0:
             self.log_dict({
                 'L1': r_loss.item(),
                 'Contrastive': cl_loss.item(),
