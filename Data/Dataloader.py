@@ -18,4 +18,4 @@ class MRIdata(LightningDataModule):
         return DataLoader(self.val, batch_size=self.batch_size, num_workers=4)
 
     def predict_dataloader(self):
-        return DataLoader(self.val, batch_size=self.batch_size, num_workers=4)
+        return DataLoader(self.predict, batch_size=self.batch_size, num_workers=4)
