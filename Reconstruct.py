@@ -4,7 +4,7 @@ import monai.data
 import numpy
 import torch
 
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["KMP_DUPLICATE_LIB_OK"] = 'TRUE'
 
 from Data.Dataloader import CTdata
 from Models.Training import ViTATrain
@@ -38,4 +38,4 @@ if __name__ == "__main__":
         sitk.WriteImage(output, str(os.path.join(prediction_output_path, name)))
 
     #TODO
-    #monai.transforms.SaveImageD - return to original
+    #monai.transforms.SaveImageD - return to original implimentation
