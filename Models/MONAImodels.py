@@ -1,6 +1,4 @@
 import torch.nn as nn
-import torch
-
 from monai.networks.nets import ViTAutoEnc
 from monai.networks.nets import SwinUNETR
 
