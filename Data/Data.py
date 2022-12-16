@@ -7,14 +7,15 @@ from monai.transforms import (
     Compose,
     CropForegroundd,
     CopyItemsd,
-    SpatialPadd,
     EnsureChannelFirstd,
     Spacingd,
     OneOf,
     ScaleIntensityRangeD,
+    ResizeD,
     RandSpatialCropSamplesd,
     RandCoarseDropoutd,
     RandCoarseShuffled,
+    SpatialPadD
 )
 
 class NiftiData(Dataset):
@@ -22,7 +23,7 @@ class NiftiData(Dataset):
         # for image check
         # self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\2M_and_6M"
 
-        # for standard training
+        # for standard training, !!change this path!!!
         self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\1M\\asNifti_NoBed"
         self.image_path = glob.glob(self.path + '\\*')
 
@@ -37,8 +38,9 @@ class NiftiData(Dataset):
                 # segmentation change to nearest
                 ScaleIntensityRangeD(keys=["image"], a_min=-500, a_max=3000, b_min=0, b_max=1),
                 CropForegroundd(keys=["image"], source_key="image"),
-                SpatialPadd(keys=["image"], spatial_size=(96, 96, 96)),
-                RandSpatialCropSamplesd(keys=["image"], roi_size=(96, 96, 96), random_size=False, num_samples=1),
+                ResizeD(keys=["image"], spatial_size=(256, 256, 128)),
+                SpatialPadD(keys=["image"], spatial_size=(256, 256, 256)),
+                RandSpatialCropSamplesd(keys=["image"], roi_size=(64, 64, 64), random_size=False, num_samples=4),
                 CopyItemsd(keys=["image"], times=2, names=["gt_image", "image_2"], allow_missing_keys=False),
                 OneOf(transforms=[
                     RandCoarseDropoutd(keys=["image"], prob=1.0, holes=6, spatial_size=5, dropout_holes=True,

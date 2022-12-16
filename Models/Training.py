@@ -1,15 +1,15 @@
 #from Models.MONAImodels import ViTA
 from monai.networks.nets import ViTAutoEnc
 from torch.nn import L1Loss
-from monai.losses import ContrastiveLoss
-
-from monai.visualize.img2tensorboard import plot_2d_or_3d_image
+from monai.losses import ContrastiveLoss, SSIMLoss
+from monai.losses.spatial_mask import MaskedLoss
 import numpy as np
 from pytorch_lightning import LightningModule
 import torch
+import torch.nn.functional as F
 
 class ViTATrain(LightningModule):
-    def __init__(self, in_channels=4, img_size=(1, 1, 96, 96, 96), patch_size=(16, 16, 16), batch_size=1, lr=1e-4):
+    def __init__(self, in_channels=4, img_size=(1, 1, 64, 64, 64), patch_size=(16, 16, 16), batch_size=1, lr=1e-4):
         super().__init__()
 
         self.save_hyperparameters()
@@ -18,7 +18,7 @@ class ViTATrain(LightningModule):
 
         self.model = ViTAutoEnc(
             in_channels=1,
-            img_size=(96, 96, 96),
+            img_size=(64, 64, 64),
             patch_size=(16, 16, 16),
             pos_embed='conv',
             hidden_size=768,
@@ -28,6 +28,8 @@ class ViTATrain(LightningModule):
         #self.model = ViTA(self.hparams.in_channels, self.hparams.img_size, self.hparams.patch_size)
         self.L1 = L1Loss()
         self.contrast = ContrastiveLoss(temperature=0.05, batch_size=self.hparams.batch_size)
+        self.SSIM = SSIMLoss(spatial_dims=3)
+
 
     def forward(self, inputs, inputs2):
         outputs_v1, hidden_v1 = self.model(inputs)
@@ -41,12 +43,16 @@ class ViTATrain(LightningModule):
         self._common_step(batch, batch_idx, "val")
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
-        return optimizer
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.lr)
+        lr_scheduler = {
+            'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, cooldown=5),
+            'monitor': 'val_loss'
+        }
+        return [optimizer], [lr_scheduler]
 
     # index needed here, batch is a list of dicts with size 1,
     def _prepare_batch(self, batch):
-        return batch[0]['image'], batch[0]['image_2'], batch[0]['gt_image']
+        return (batch[i]['image'], batch[i]['image_2'], batch[i]['gt_image'] for i in range(len(batch)))
 
     def _common_step(self, batch, batch_idx, stage: str):
         inputs, inputs_2, gt_input = self._prepare_batch(batch)
@@ -58,6 +64,7 @@ class ViTATrain(LightningModule):
 
         r_loss = self.L1(outputs_v1, gt_input)
         cl_loss = self.contrast(flat_out_v1, flat_out_v2)
+        ssim_loss = self.SSIM(outputs_v2, gt_input, data_range=inputs.max().unsqueeze(0))
 
         # Adjust the CL loss by Recon Loss
         total_loss = r_loss + cl_loss * r_loss
@@ -68,18 +75,18 @@ class ViTATrain(LightningModule):
             'step': float(train_steps),
             'epoch': float(self.current_epoch)}, batch_size=self.hparams.batch_size)
 
-        if train_steps % 100 == 0:
+        if train_steps % 10 == 0:
             self.log_dict({
                 'L1': r_loss.item(),
                 'Contrastive': cl_loss.item(),
                 'epoch': float(self.current_epoch),
                 'step': float(train_steps)}, batch_size=self.hparams.batch_size)
             self.logger.log_image(key="Ground Truth", images=[
-                (gt_input.detach().cpu().numpy()*255)[0, 0, :, :, 38]],
+                (gt_input.detach().cpu().numpy()*255)[0, 0, :, :, 32]],
                 caption=["GT"])
             self.logger.log_image(key="Input (Transformed) Images", images=[
-                (inputs.detach().cpu().numpy()*255)[0, 0, :, :, 38],
-                (inputs_2.detach().cpu().numpy()*255)[0, 0, :, :, 38]],
+                (inputs.detach().cpu().numpy()*255)[0, 0, :, :, 32],
+                (inputs_2.detach().cpu().numpy()*255)[0, 0, :, :, 32]],
                 caption=["Input 1", "Input 2"])
             outputs_v1 = outputs_v1.to(dtype=torch.float16)
             outputs_v2 = outputs_v2.to(dtype=torch.float16)
