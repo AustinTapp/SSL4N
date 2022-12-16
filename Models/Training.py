@@ -6,8 +6,8 @@ from pytorch_lightning import LightningModule
 import torch
 
 class ViTATrain(LightningModule):
-    def __init__(self, in_channels=4, img_size=(1, 1, 96, 96, 96), patch_size=(16, 16, 16), batch_size=1, lr=1e-4,
-                 ckpt_path="C:\\Users\\Austin Tapp\\Documents\\SSL4N\\saved_models\\loss\\epoch=19070-step=19070.ckpt"):
+    def __init__(self, in_channels=4, img_size=(1, 1, 256, 256, 256), patch_size=(16, 16, 16), batch_size=1, lr=1e-4,
+                 ckpt_path="None"):
         super().__init__()
 
         self.save_hyperparameters()
@@ -15,8 +15,8 @@ class ViTATrain(LightningModule):
 
         self.model = ViTAutoEnc(
             in_channels=1,
-            img_size=(96, 96, 96),
-            patch_size=(16, 16, 16),
+            img_size=(256, 256, 128),
+            patch_size=(32, 32, 16),
             pos_embed='conv',
             hidden_size=768,
             mlp_dim=3072,

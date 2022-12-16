@@ -1,7 +1,7 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-from Data.Dataloader import MRIdata
+from Data.Dataloader import CTdata
 from Models.Training import ViTATrain
 
 from pytorch_lightning import Trainer
@@ -20,13 +20,13 @@ if __name__ == "__main__":
         accelerator="gpu",
         devices=[0],
         precision="bf16",
-        max_epochs=20000,
+        max_epochs=2000,
         callbacks=[lr_monitor, checkpoint_callback],
         log_every_n_steps=1)
 
     trainer.fit(
-        model=ViTATrain(batch_size=6),
+        model=ViTATrain(batch_size=12),
         ckpt_path=last_chpt,
-        datamodule=MRIdata(
-            batch_size=6)
+        datamodule=CTdata(
+            batch_size=12)
     )
