@@ -20,12 +20,12 @@ if __name__ == "__main__":
         accelerator="gpu",
         devices=[0],
         precision="bf16",
-        max_epochs=2000,
+        max_epochs=2,
         callbacks=[lr_monitor, checkpoint_callback],
         log_every_n_steps=1)
 
     trainer.fit(
-        model=ViTATrain(batch_size=12),
+        model=ViTATrain(mask_weight=5.0),
         #ckpt_path=last_chpt,
-        datamodule=CTdata(batch_size=12)
+        datamodule=CTdata(batch_size=6)
     )

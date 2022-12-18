@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 
 class ViTATrain(LightningModule):
-    def __init__(self, in_channels=4, img_size=(1, 1, 64, 64, 64), patch_size=(16, 16, 16), batch_size=1, lr=1e-4):
+    def __init__(self, in_channels=4, mask_weight=3, img_size=(1, 1, 64, 64, 64), patch_size=(16, 16, 16), batch_size=1, lr=1e-4):
         super().__init__()
 
         self.save_hyperparameters()
@@ -27,8 +27,9 @@ class ViTATrain(LightningModule):
 
         #self.model = ViTA(self.hparams.in_channels, self.hparams.img_size, self.hparams.patch_size)
         self.L1 = L1Loss()
-        self.contrast = ContrastiveLoss(temperature=0.05, batch_size=self.hparams.batch_size)
+        self.Contrast = ContrastiveLoss(temperature=0.05)
         self.SSIM = SSIMLoss(spatial_dims=3)
+        self.Mask = MaskedLoss(loss=F.l1_loss)
 
 
     def forward(self, inputs, inputs2):
@@ -52,7 +53,10 @@ class ViTATrain(LightningModule):
 
     # index needed here, batch is a list of dicts with size 1,
     def _prepare_batch(self, batch):
-        return (batch[i]['image'], batch[i]['image_2'], batch[i]['gt_image'] for i in range(len(batch)))
+        image_batch = torch.cat([batch[i]['image'] for i in range(len(batch))])
+        image_2_batch = torch.cat([batch[i]['image_2'] for i in range(len(batch))])
+        gt_batch = torch.cat([batch[i]['gt_image'] for i in range(len(batch))])
+        return image_batch, image_2_batch, gt_batch
 
     def _common_step(self, batch, batch_idx, stage: str):
         inputs, inputs_2, gt_input = self._prepare_batch(batch)
@@ -62,12 +66,35 @@ class ViTATrain(LightningModule):
         flat_out_v1 = outputs_v1.flatten(start_dim=1, end_dim=4)
         flat_out_v2 = outputs_v2.flatten(start_dim=1, end_dim=4)
 
+        gt_input.detach().cpu().numpy() * 255[0, 0,:,:, 32]
+
+        def get_mask(img, weight):
+            mask = torch.ones_like(img)
+            mask[img > 0.057] = weight
+            return mask
+
+        gt_clone = gt_input.clone()
+        gt_input_mask = get_mask(img=gt_clone, weight=self.hparams.mask_weight)
+
+        skull_mask1 = gt_input_mask + get_mask(img=outputs_v1, weight=self.hparams.mask_weight)
+        skull_mask2 = gt_input_mask + get_mask(img=outputs_v2, weight=self.hparams.mask_weight)
+
         r_loss = self.L1(outputs_v1, gt_input)
-        cl_loss = self.contrast(flat_out_v1, flat_out_v2)
+        cl_loss = self.Contrast(flat_out_v1, flat_out_v2)
         ssim_loss = self.SSIM(outputs_v2, gt_input, data_range=inputs.max().unsqueeze(0))
 
+        #outputs_v1 = outputs_v1.to(dtype=torch.float16)
+        #outputs_v2 = outputs_v2.to(dtype=torch.float16)
+        #outputs_v1_array = np.clip(outputs_v1.detach().cpu().numpy(), 0, 1)
+        #outputs_v2_array = np.clip(outputs_v2.detach().cpu().numpy(), 0, 1)
+
+        #need to sub outputs array?
+        mask_loss1 = self.Mask(outputs_v1, gt_input, mask=skull_mask1)
+        mask_loss2 = self.Mask(outputs_v2, gt_input, mask=skull_mask2)
+        mask_loss = (mask_loss1+mask_loss2)/2
+
         # Adjust the CL loss by Recon Loss
-        total_loss = r_loss + cl_loss * r_loss
+        total_loss = mask_loss + ssim_loss + r_loss + cl_loss * r_loss
         train_steps = self.current_epoch + batch_idx
 
         self.log_dict({
@@ -79,11 +106,15 @@ class ViTATrain(LightningModule):
             self.log_dict({
                 'L1': r_loss.item(),
                 'Contrastive': cl_loss.item(),
+                'SSIM': ssim_loss.item(),
+                'Skull Mask': mask_loss.item(),
                 'epoch': float(self.current_epoch),
                 'step': float(train_steps)}, batch_size=self.hparams.batch_size)
+
             self.logger.log_image(key="Ground Truth", images=[
-                (gt_input.detach().cpu().numpy()*255)[0, 0, :, :, 32]],
-                caption=["GT"])
+                (gt_input.detach().cpu().numpy()*255)[0, 0, :, :, 32]
+                (gt_input_mask.detach().cpu().numpy()*255)[0, 0, :, :, 32]],
+                caption=["GT", "GT Mask"])
             self.logger.log_image(key="Input (Transformed) Images", images=[
                 (inputs.detach().cpu().numpy()*255)[0, 0, :, :, 32],
                 (inputs_2.detach().cpu().numpy()*255)[0, 0, :, :, 32]],
@@ -94,8 +125,10 @@ class ViTATrain(LightningModule):
             outputs_v2_array = np.clip(outputs_v2.detach().cpu().numpy(), 0, 1)
             self.logger.log_image(key="Reconstructed Images", images=[
                 (outputs_v1_array*255)[0, 0, :, :, 38],
-                (outputs_v2_array*255)[0, 0, :, :, 38]],
-                caption=["Recon1", "Recon2"])
+                (outputs_v2_array*255)[0, 0, :, :, 38],
+                (skull_mask1 * 255)[0, 0, :, :, 38],
+                (skull_mask2 * 255)[0, 0, :, :, 38]],
+                caption=["Recon1", "Recon2", "ReconMask1", "ReconMask2"])
 
         return total_loss
 

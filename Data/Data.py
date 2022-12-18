@@ -24,7 +24,7 @@ class NiftiData(Dataset):
         # self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\2M_and_6M"
 
         # for standard training, !!change this path!!!
-        self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\1M\\asNifti_NoBed"
+        self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\CG500\\asNifti_nobed"
         self.image_path = glob.glob(self.path + '\\*')
 
         self.transform = Compose(
@@ -37,7 +37,7 @@ class NiftiData(Dataset):
                     1.0, 1.0, 1.0), mode=("bilinear")),
                 # segmentation change to nearest
                 ScaleIntensityRangeD(keys=["image"], a_min=-500, a_max=3000, b_min=0, b_max=1),
-                CropForegroundd(keys=["image"], source_key="image"),
+                #CropForegroundd(keys=["image"], source_key="image"),
                 ResizeD(keys=["image"], spatial_size=(256, 256, 128)),
                 SpatialPadD(keys=["image"], spatial_size=(256, 256, 256)),
                 RandSpatialCropSamplesd(keys=["image"], roi_size=(64, 64, 64), random_size=False, num_samples=4),
