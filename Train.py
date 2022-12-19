@@ -27,5 +27,5 @@ if __name__ == "__main__":
     trainer.fit(
         model=ViTATrain(mask_weight=5.0),
         #ckpt_path=last_chpt,
-        datamodule=CTdata(batch_size=6)
+        datamodule=CTdata(batch_size=4)
     )

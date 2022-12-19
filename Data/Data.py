@@ -5,7 +5,6 @@ from monai.transforms import (
     LoadImaged,
     OrientationD,
     Compose,
-    CropForegroundd,
     CopyItemsd,
     EnsureChannelFirstd,
     Spacingd,
@@ -15,7 +14,8 @@ from monai.transforms import (
     RandSpatialCropSamplesd,
     RandCoarseDropoutd,
     RandCoarseShuffled,
-    SpatialPadD
+    SpatialPadD,
+    ThresholdIntensityD
 )
 
 class NiftiData(Dataset):
@@ -24,7 +24,7 @@ class NiftiData(Dataset):
         # self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\2M_and_6M"
 
         # for standard training, !!change this path!!!
-        self.path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\Data\\Skull_Recon_Tests\\CG500\\asNifti_nobed"
+        self.path = "C:\\Users\\pmilab\\Auxillary\\SSL4N\\Data\\asNifti_nobed"
         self.image_path = glob.glob(self.path + '\\*')
 
         self.transform = Compose(
@@ -36,12 +36,13 @@ class NiftiData(Dataset):
                 Spacingd(keys=["image"], pixdim=(
                     1.0, 1.0, 1.0), mode=("bilinear")),
                 # segmentation change to nearest
-                ScaleIntensityRangeD(keys=["image"], a_min=-500, a_max=3000, b_min=0, b_max=1),
                 #CropForegroundd(keys=["image"], source_key="image"),
                 ResizeD(keys=["image"], spatial_size=(256, 256, 128)),
                 SpatialPadD(keys=["image"], spatial_size=(256, 256, 256)),
                 RandSpatialCropSamplesd(keys=["image"], roi_size=(64, 64, 64), random_size=False, num_samples=4),
-                CopyItemsd(keys=["image"], times=2, names=["gt_image", "image_2"], allow_missing_keys=False),
+                CopyItemsd(keys=["image"], times=3, names=["image_2", "gt_image", "gt_mask"], allow_missing_keys=False),
+                ThresholdIntensityD(keys=["gt_mask"], threshold=200),
+                ScaleIntensityRangeD(keys=["image", "image_2", "gt_image"], a_min=-500, a_max=3000, b_min=0, b_max=1),
                 OneOf(transforms=[
                     RandCoarseDropoutd(keys=["image"], prob=1.0, holes=6, spatial_size=5, dropout_holes=True,
                                        max_spatial_size=32),
