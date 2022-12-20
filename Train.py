@@ -20,7 +20,7 @@ if __name__ == "__main__":
         accelerator="gpu",
         devices=[0],
         precision="bf16",
-        max_epochs=2,
+        max_epochs=2000,
         callbacks=[lr_monitor, checkpoint_callback],
         log_every_n_steps=1)
 
