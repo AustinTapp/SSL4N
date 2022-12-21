@@ -6,6 +6,7 @@ from monai.transforms import (
     OrientationD,
     Compose,
     CopyItemsd,
+    CropForegroundd,
     EnsureChannelFirstd,
     Spacingd,
     OneOf,
@@ -36,9 +37,9 @@ class NiftiData(Dataset):
                 Spacingd(keys=["image"], pixdim=(
                     1.0, 1.0, 1.0), mode=("bilinear")),
                 # segmentation change to nearest
-                #CropForegroundd(keys=["image"], source_key="image"),
-                ResizeD(keys=["image"], spatial_size=(256, 256, 128)),
-                SpatialPadD(keys=["image"], spatial_size=(256, 256, 256)),
+                CropForegroundd(keys=["image"], source_key="image"),
+                ResizeD(keys=["image"], spatial_size=(256, 256, 256)),
+                #SpatialPadD(keys=["image"], spatial_size=(256, 256, 256)),
                 RandSpatialCropSamplesd(keys=["image"], roi_size=(64, 64, 64), random_size=False, num_samples=4),
                 CopyItemsd(keys=["image"], times=3, names=["image_2", "gt_image", "gt_mask"], allow_missing_keys=False),
                 ThresholdIntensityD(keys=["gt_mask"], threshold=200),

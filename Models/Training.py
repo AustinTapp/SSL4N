@@ -73,16 +73,18 @@ class ViTATrain(LightningModule):
             return mask
 
         gt_input_mask = get_mask(img=gt_mask, weight=self.hparams.mask_weight)
+        outputs_v1_mask = get_mask(img=outputs_v1, weight=self.hparams.mask_weight)
+        outputs_v2_mask = get_mask(img=outputs_v2, weight=self.hparams.mask_weight)
 
-        skull_mask1 = gt_input_mask + get_mask(img=outputs_v1, weight=self.hparams.mask_weight)
-        skull_mask2 = gt_input_mask + get_mask(img=outputs_v2, weight=self.hparams.mask_weight)
+        skull_mask1 = gt_input_mask + outputs_v1_mask
+        skull_mask2 = gt_input_mask + outputs_v2_mask
 
         r_loss = self.L1(outputs_v1, gt_input)
         cl_loss = self.Contrast(flat_out_v1, flat_out_v2)
         ssim_loss = self.SSIM(outputs_v2, gt_input, data_range=inputs.max().unsqueeze(0))
 
-        mask_loss1 = self.Mask(outputs_v1, gt_input, mask=gt_input_mask)
-        mask_loss2 = self.Mask(outputs_v2, gt_input, mask=gt_input_mask)
+        mask_loss1 = self.Mask(outputs_v1, gt_input, mask=skull_mask1)
+        mask_loss2 = self.Mask(outputs_v2, gt_input, mask=skull_mask2)
         mask_loss = (mask_loss1+mask_loss2)/2
 
         # Adjust the CL loss by Recon Loss
@@ -116,10 +118,10 @@ class ViTATrain(LightningModule):
             outputs_v1_array = np.clip(outputs_v1.detach().cpu().numpy(), 0, 1)
             outputs_v2_array = np.clip(outputs_v2.detach().cpu().numpy(), 0, 1)
             self.logger.log_image(key="Reconstructed Images", images=[
-                (outputs_v1_array*255)[0, 0, :, :, 38],
-                (outputs_v2_array*255)[0, 0, :, :, 38],
-                (skull_mask1.detach().cpu().numpy()*25)[0, 0, :, :, 38],
-                (skull_mask2.detach().cpu().numpy()*25)[0, 0, :, :, 38]],
+                (outputs_v1_array*255)[0, 0, :, :, 32],
+                (outputs_v2_array*255)[0, 0, :, :, 32],
+                (outputs_v1_mask.detach().cpu().numpy()*25)[0, 0, :, :, 32],
+                (outputs_v2_mask.detach().cpu().numpy()*25)[0, 0, :, :, 32]],
                 caption=["Recon1", "Recon2", "ReconMask1", "ReconMask2"])
 
         return total_loss
