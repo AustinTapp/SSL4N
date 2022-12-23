@@ -106,12 +106,12 @@ class ViTATrain(LightningModule):
                 'step': float(train_steps)}, batch_size=self.hparams.batch_size)
 
             self.logger.log_image(key="Ground Truth", images=[
-                (gt_input.detach().cpu().numpy()*255)[0, 0, :, :, 32],
-                (gt_input_mask.detach().cpu().numpy()*50)[0, 0, :, :, 32]],
+                (gt_input.detach().cpu().numpy()*255)[0, 0, :, :, 64],
+                (gt_input_mask.detach().cpu().numpy()*50)[0, 0, :, :, 64]],
                 caption=["GT", "GT Mask"])
             self.logger.log_image(key="Input (Transformed) Images", images=[
-                (inputs.detach().cpu().numpy()*255)[0, 0, :, :, 32],
-                (inputs_2.detach().cpu().numpy()*255)[0, 0, :, :, 32]],
+                (inputs.detach().cpu().numpy()*255)[0, 0, :, :, 64],
+                (inputs_2.detach().cpu().numpy()*255)[0, 0, :, :, 64]],
                 caption=["Input 1", "Input 2"])
             outputs_v1 = outputs_v1.to(dtype=torch.float16)
             outputs_v2 = outputs_v2.to(dtype=torch.float16)
@@ -120,10 +120,10 @@ class ViTATrain(LightningModule):
             outputs_v1_array = np.clip(outputs_v1.detach().cpu().numpy(), 0, 1)
             outputs_v2_array = np.clip(outputs_v2.detach().cpu().numpy(), 0, 1)
             self.logger.log_image(key="Reconstructed Images", images=[
-                (outputs_v1_array*255)[0, 0, :, :, 32],
-                (outputs_v2_array*255)[0, 0, :, :, 32],
-                (outputs_v1_mask.detach().cpu().numpy()*50)[0, 0, :, :, 32],
-                (outputs_v2_mask.detach().cpu().numpy()*50)[0, 0, :, :, 32]],
+                (outputs_v1_array*255)[0, 0, :, :, 64],
+                (outputs_v2_array*255)[0, 0, :, :, 64],
+                (outputs_v1_mask.detach().cpu().numpy()*50)[0, 0, :, :, 64],
+                (outputs_v2_mask.detach().cpu().numpy()*50)[0, 0, :, :, 64]],
                 caption=["Recon1", "Recon2", "ReconMask1", "ReconMask2"])
 
         return total_loss
