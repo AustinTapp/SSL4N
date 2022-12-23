@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 
 class ViTATrain(LightningModule):
-    def __init__(self, in_channels=4, mask_weight=3, img_size=(1, 1, 64, 64, 64), patch_size=(16, 16, 16), batch_size=1, lr=1e-4):
+    def __init__(self, in_channels=4, mask_weight=3, img_size=(1, 1, 128, 128, 128), patch_size=(32, 32, 32), batch_size=1, lr=1e-4):
         super().__init__()
 
         self.save_hyperparameters()
@@ -18,8 +18,8 @@ class ViTATrain(LightningModule):
 
         self.model = ViTAutoEnc(
             in_channels=1,
-            img_size=(64, 64, 64),
-            patch_size=(16, 16, 16),
+            img_size=(128, 128, 128),
+            patch_size=(32, 32, 32),
             pos_embed='conv',
             hidden_size=768,
             mlp_dim=3072,
@@ -44,7 +44,7 @@ class ViTATrain(LightningModule):
         self._common_step(batch, batch_idx, "val")
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
         lr_scheduler = {
             'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, cooldown=5),
             'monitor': 'val_loss'

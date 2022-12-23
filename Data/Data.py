@@ -40,7 +40,7 @@ class NiftiData(Dataset):
                 CropForegroundd(keys=["image"], source_key="image"),
                 ResizeD(keys=["image"], spatial_size=(256, 256, 256)),
                 #SpatialPadD(keys=["image"], spatial_size=(256, 256, 256)),
-                RandSpatialCropSamplesd(keys=["image"], roi_size=(64, 64, 64), random_size=False, num_samples=4),
+                RandSpatialCropSamplesd(keys=["image"], roi_size=(128, 128, 128), random_size=False, num_samples=2),
                 CopyItemsd(keys=["image"], times=3, names=["image_2", "gt_image", "gt_mask"], allow_missing_keys=False),
                 ThresholdIntensityD(keys=["gt_mask"], threshold=200),
                 ScaleIntensityRangeD(keys=["image", "image_2", "gt_image"], a_min=-500, a_max=3000, b_min=0, b_max=1),
