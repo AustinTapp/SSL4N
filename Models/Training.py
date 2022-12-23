@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 
 class ViTATrain(LightningModule):
-    def __init__(self, in_channels=4, mask_weight=3, img_size=(1, 1, 128, 128, 128), patch_size=(32, 32, 32), batch_size=1, lr=1e-4):
+    def __init__(self, in_channels=4, mask_weight=3, img_size=(1, 1, 128, 128, 128), patch_size=(16, 16, 16), batch_size=1, lr=1e-4):
         super().__init__()
 
         self.save_hyperparameters()
@@ -19,7 +19,7 @@ class ViTATrain(LightningModule):
         self.model = ViTAutoEnc(
             in_channels=1,
             img_size=(128, 128, 128),
-            patch_size=(32, 32, 32),
+            patch_size=(16, 16, 16),
             pos_embed='conv',
             hidden_size=768,
             mlp_dim=3072,
