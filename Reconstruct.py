@@ -12,7 +12,7 @@ from pytorch_lightning import Trainer
 
 if __name__ == "__main__":
     checkpoint_path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\\saved_models\\loss\\epoch=19070-step=19070.ckpt"
-    prediction_output_path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\\Recon\\1M"
+    prediction_output_path = "C:\\Users\\Austin Tapp\\Documents\\SSL4N\\Recon\\1M\\test_out"
 
     trainer = Trainer(accelerator="gpu", devices=[0])
 

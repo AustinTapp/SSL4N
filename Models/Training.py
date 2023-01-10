@@ -15,8 +15,8 @@ class ViTATrain(LightningModule):
 
         self.model = ViTAutoEnc(
             in_channels=1,
-            img_size=(256, 256, 128),
-            patch_size=(32, 32, 16),
+            img_size=(96, 96, 96),
+            patch_size=(16, 16, 16),
             pos_embed='conv',
             hidden_size=768,
             mlp_dim=3072,
