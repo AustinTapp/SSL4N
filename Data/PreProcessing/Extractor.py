@@ -3,7 +3,7 @@ import shutil
 import SimpleITK as sitk
 
 if __name__ == '__main__':
-    data_dir = "D:\\Data\\PairedSkullBrain"
+    data_dir = "D:\\Data\\CNH_Paired"
     list_subfolders_with_paths = [f.path for f in os.scandir(data_dir) if f.is_dir()]
     for i in range(len(list_subfolders_with_paths)):
         nifti_folder = os.path.join(data_dir, "asNifti")
