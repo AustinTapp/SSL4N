@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
     checkpoint_callback = ModelCheckpoint(dirpath="saved_models\\loss\\", save_top_k=1, monitor="val_loss", save_on_train_epoch_end=True)
-    #last_chpt = "./saved_models/loss/" + "epoch=16-step=21.ckpt"
+    last_chpt = "./saved_models/loss/" + "epoch=17412-step=17412.ckpt"
     trainer = Trainer(
         logger=wandb_logger,
         accelerator="gpu",
@@ -25,7 +25,8 @@ if __name__ == "__main__":
         log_every_n_steps=1)
 
     trainer.fit(
-        model=ViTATrain(mask_weight=5.0),
-        #ckpt_path=last_chpt,
-        datamodule=CTdata(batch_size=6)
+        model=ViTATrain(batch_size=12),
+        ckpt_path=last_chpt,
+        datamodule=CTdata(
+            batch_size=12)
     )
