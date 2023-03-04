@@ -15,4 +15,4 @@ To install requirements using the .toml file, open a prompt (Anaconda) and navig
 Once poetry is installed, run: 'python -m poetry install'
 
 Based off:
-https://github.com/Project-MONAI/tutorials/blob/main/self_supervised_pretraining/ssl_script_train.py
+https://github.com/Project-MONAI/tutorials/tree/main/self_supervised_pretraining
